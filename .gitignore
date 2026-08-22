@@ -1,0 +1,20 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# environments / tooling
+.DS_Store
+.env
+
+# benchmark artifacts (keep results/ dir via .gitkeep)
+results/*.jsonl
+results/*.png
+
+# model weights are never committed
+*.safetensors
+*.gguf
+weights/
