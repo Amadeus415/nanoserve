@@ -9,8 +9,8 @@ from nanoserve.server import app, state
 
 
 def make_client() -> TestClient:
-    state.settings = Settings(engine="mock", model_id="mock-27b")
-    state.engine = MockEngine(model_id="mock-27b", words_per_second=100_000)
+    state.settings = Settings(engine="mock", model_id="mock-qwen3-14b")
+    state.engine = MockEngine(model_id="mock-qwen3-14b", words_per_second=100_000)
     state.last_stats = None
     return TestClient(app)
 
@@ -22,7 +22,7 @@ def test_health():
     body = r.json()
     assert body["status"] == "ok"
     assert body["engine"] == "mock"
-    assert body["model"] == "mock-27b"
+    assert body["model"] == "mock-qwen3-14b"
 
 
 def test_chat_completion_non_streaming():
@@ -75,7 +75,7 @@ def test_metrics_after_request():
 
 
 def test_lazy_engine_load():
-    state.settings = Settings(engine="mock", model_id="lazy-27b")
+    state.settings = Settings(engine="mock", model_id="lazy-14b")
     state.engine = None
     try:
         client = TestClient(app)
@@ -84,6 +84,6 @@ def test_lazy_engine_load():
         client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "wake up"}], "max_tokens": 2,
         })
-        assert state.engine is not None and state.engine.model_id == "lazy-27b"
+        assert state.engine is not None and state.engine.model_id == "lazy-14b"
     finally:
         state.engine = None

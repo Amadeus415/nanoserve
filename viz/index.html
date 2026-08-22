@@ -97,7 +97,7 @@
   </div>
 
   <label>Model size <span class="val" id="v-params"></span></label>
-  <input type="range" id="params" min="1" max="70" step="1" value="27">
+  <input type="range" id="params" min="1" max="70" step="0.1" value="14.8">
 
   <div class="row">
     <button class="primary" id="run">&#9654; Send request</button>
@@ -168,8 +168,8 @@ const fmtGib = b => (b / GIB).toFixed(1) + ' GiB';
 /* ------------------------------------------------------------------ */
 /* State                                                               */
 /* ------------------------------------------------------------------ */
-let PROMPT = 1024, MAXTOK = 128, BITS = 4, PARAMS_B = 27;
-const LAYERS = 64, KV_HEADS = 8, HEAD_DIM = 128, BUDGET = 48;
+let PROMPT = 1024, MAXTOK = 128, BITS = 4, PARAMS_B = 14.8;
+const LAYERS = 40, KV_HEADS = 8, HEAD_DIM = 128, BUDGET = 48;
 
 const sim = {
   running: false, done: false,
@@ -258,7 +258,7 @@ for (let i=0;i<LAYERS;i+=8){
   s.position.set(Z_MODEL_X, .4+i*.28, 0);
   s.userData.kind='model'; model.add(s);
 }
-const lblModel = makeLabel('model · 64 layers');
+const lblModel = makeLabel('model · 40 layers');
 const weights = new THREE.Mesh(new THREE.BoxGeometry(3,1,1), MAT_WEIGHTS.clone());
 weights.position.set(Z_MODEL_X, 0, 0);
 weights.userData.kind='weights';
@@ -391,7 +391,7 @@ let timeScale = 8;   // visual seconds per real second
 function rebuildScene(){
   // weights block volume ∝ actual byte count
   const wB=weightsBytes(PARAMS_B,BITS);
-  const s=Math.cbrt(wB/(27e9*4/8));            // relative to default 27B@4bit
+  const s=Math.cbrt(wB/(14.8e9*4/8));          // relative to Qwen3-14B at 4-bit
   weights.scale.set(s,s,s);
   weights.position.y=.4*s;
   lblWeights.textContent=`weights ${PARAMS_B}B @ ${BITS}-bit`;
@@ -447,7 +447,7 @@ function placeLabels(){
 const ray=new THREE.Raycaster(), ptr=new THREE.Vector2();
 const INFO={
   prompt:{t:'Prompt tokens',b:`The user's message, chopped into tokens. Their COUNT drives everything: prefill cost, KV cache size, decode speed. Set with <code>--prompt-tokens</code> (<code>nanoserve/bench.py</code>).`},
-  model:{t:'Model (64 transformer layers)',b:`Each slab is a layer. During <b>decode</b>, every layer runs once per token — strictly sequential, you can't parallelize across steps.`},
+  model:{t:'Model (40 transformer layers)',b:`Each slab is a layer. During <b>decode</b>, every layer runs once per token — strictly sequential, you can't parallelize across steps.`},
   weights:{t:'Weights',b:`Volume here is real: <code>params × bits/8</code> bytes. Every decoded token re-reads ALL of them from memory — that's why fewer bits means faster generation, not just smaller. See <code>memory.py:weights_bytes()</code>. Try switching bits above.`},
   kv:{t:'KV cache',b:`Every token's attention keys/values are stored so they never get recomputed. Grows linearly with context: <code>2 × layers × kv_heads × head_dim × 2 bytes</code> per token. See <code>memory.py:kv_cache_bytes()</code>.`},
   gen:{t:'Generated token',b:`Output tokens are produced ONE per forward pass. Each pass reads all weights + the entire KV cache, so speed ≈ memory bandwidth ÷ bytes-per-pass. That's why long contexts slow generation down.`},

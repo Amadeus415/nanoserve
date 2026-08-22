@@ -130,7 +130,7 @@ _MOCK_WORDS = (
 class MockEngine(BaseEngine):
     name = "mock"
 
-    def __init__(self, model_id: str = "mock-27b", words_per_second: float = 50.0):
+    def __init__(self, model_id: str = "mock-qwen3-14b", words_per_second: float = 50.0):
         self.model_id = model_id
         self.delay = 1.0 / words_per_second if words_per_second > 0 else 0.0
 

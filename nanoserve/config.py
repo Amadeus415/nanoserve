@@ -13,9 +13,9 @@ import os
 from dataclasses import dataclass
 
 
-# Reference weights (bf16). On a 48GB machine use a 4/8-bit MLX build instead;
+# Official BF16 checkpoint. Quantized MLX builds use the same model family;
 # see scripts/download.py --help.
-OFFICIAL_27B = "Qwen/Qwen3.8-27B"
+BASELINE_MODEL = "Qwen/Qwen3-14B"
 # Tiny checkpoint used for smoke-testing the whole stack on any laptop.
 DEV_TINY_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 
@@ -25,7 +25,7 @@ class Settings:
     """Runtime settings for the server and benchmark tools."""
 
     engine: str = "auto"            # auto | mock | mlx
-    model_id: str = OFFICIAL_27B
+    model_id: str = BASELINE_MODEL
     host: str = "127.0.0.1"
     port: int = 8000
 
@@ -48,7 +48,7 @@ def load_settings() -> Settings:
     env = os.environ.get
     return Settings(
         engine=env("NANOSERVE_ENGINE", "auto"),
-        model_id=env("NANOSERVE_MODEL", OFFICIAL_27B),
+        model_id=env("NANOSERVE_MODEL", BASELINE_MODEL),
         host=env("NANOSERVE_HOST", "127.0.0.1"),
         port=int(env("NANOSERVE_PORT", "8000")),
         max_tokens=int(env("NANOSERVE_MAX_TOKENS", "256")),

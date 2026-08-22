@@ -9,7 +9,7 @@ per measurement to an output file, so sweeps compose trivially:
     python -m nanoserve.bench --engine mlx \
         --model <4-bit model repo or local path> \
         --prompt-tokens 128 1024 4096 16384 \
-        --max-tokens 256 --repeats 3 --out results/qwen27b-ctx.jsonl
+        --max-tokens 256 --repeats 3 --out results/qwen14b-ctx.jsonl
 
 Metrics captured per run:
     ttft_s       time-to-first-token (dominated by prompt processing)
@@ -25,7 +25,7 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 
-from .config import OFFICIAL_27B, Settings
+from .config import BASELINE_MODEL, Settings
 from .engine import BaseEngine, Message, Stats, build_engine
 
 
@@ -120,7 +120,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     settings = Settings(engine=args.engine, model_id=args.model or (
-        OFFICIAL_27B if args.engine == "mlx" else "mock-27b"
+        BASELINE_MODEL if args.engine == "mlx" else "mock-qwen3-14b"
     ))
     engine = build_engine(settings.resolved_engine(), settings.model_id)
     rows = sweep(engine, args)

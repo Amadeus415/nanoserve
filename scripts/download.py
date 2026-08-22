@@ -1,12 +1,12 @@
 """Download model weights from HuggingFace into ./weights/<name>.
 
-    python scripts/download.py mlx-community/Qwen3.8-27B-4bit     # target setup
+    python scripts/download.py mlx-community/Qwen3-14B-4bit       # target setup
     python scripts/download.py Qwen/Qwen2.5-0.5B-Instruct         # tiny smoke test
 
-Tip: prefer pre-quantized MLX repos (4-bit for a 27B on 48GB). To build your
+Tip: prefer pre-quantized MLX repos for quick experiments. To build your
 own from official weights:
 
-    python -m mlx_lm convert --hf-path Qwen/Qwen3.8-27B -q --upload-repo none
+    python -m mlx_lm convert --hf-path Qwen/Qwen3-14B -q --upload-repo none
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ def slugify(repo_id: str) -> str:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="download HF model weights")
-    p.add_argument("repo", help="e.g. Qwen/Qwen3.8-27B or a mlx-community quant")
+    p.add_argument("repo", help="e.g. Qwen/Qwen3-14B or a mlx-community quant")
     p.add_argument("--dest", default="weights", help="parent directory")
     args = p.parse_args()
 

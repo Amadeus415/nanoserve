@@ -10,8 +10,8 @@ def test_make_prompt_hits_target_length():
 
 
 def test_run_once_row_shape():
-    engine = MockEngine(model_id="mock-27b", words_per_second=50_000)
-    cfg = RunConfig(engine="mock", model="mock-27b", prompt_tokens_target=20,
+    engine = MockEngine(model_id="mock-qwen3-14b", words_per_second=50_000)
+    cfg = RunConfig(engine="mock", model="mock-qwen3-14b", prompt_tokens_target=20,
                     max_tokens=16, temperature=0.0, label="unit")
     row = run_once(engine, cfg)
     for key in ("engine", "model", "prompt_tokens_target", "max_tokens",

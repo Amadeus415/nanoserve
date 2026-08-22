@@ -12,8 +12,8 @@ comparing serving implementations rather than just models.
 
 One model family at several sizes/quantizations — change one variable at a time.
 
-**Baseline: Qwen3-14B** (14.8B params, 40 layers, 32K native context, official
-MLX checkpoints). Why 14B:
+**Baseline: Qwen3-14B** (14.8B params, 40 layers, 40,960-token native context,
+with official BF16 and MLX-community quantized checkpoints). Why 14B:
 
 - ~4B is too easy — everything fits, tradeoffs are invisible.
 - ~70B means only fighting memory, no serving insight.

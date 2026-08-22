@@ -9,8 +9,8 @@ Everything else (activations, buffers) is small for single-request decode on
 unified-memory Macs. Use this module to sanity-check configs before waiting
 for a multi-GB download:
 
-    python -m nanoserve.memory --params 27 --bits 4 --seq-len 32768
-    python -m nanoserve.memory --config-url Qwen/Qwen3.8-27B --bits 4
+    python -m nanoserve.memory --params 14.8 --bits 4 --seq-lens 32768
+    python -m nanoserve.memory --config-url Qwen/Qwen3-14B --bits 4
 
 Formulas (transformer decoder, GQA):
     kv_bytes_per_token = 2 * n_layers * n_kv_heads * head_dim * dtype_bytes
@@ -89,11 +89,11 @@ def report(
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="estimate serving memory footprint")
-    p.add_argument("--params", type=float, default=27.0, help="billions of parameters")
+    p.add_argument("--params", type=float, default=14.8, help="billions of parameters")
     p.add_argument("--bits", type=int, default=4, help="weight precision in bits")
     p.add_argument("--config-url", default=None,
                    help="HF repo id; pulls real layer/head counts from config.json")
-    p.add_argument("--layers", type=int, default=64)
+    p.add_argument("--layers", type=int, default=40)
     p.add_argument("--kv-heads", type=int, default=8)
     p.add_argument("--head-dim", type=int, default=128)
     p.add_argument("--seq-lens", type=int, nargs="+",

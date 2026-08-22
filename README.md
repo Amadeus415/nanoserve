@@ -3,7 +3,7 @@
 A minimal, hackable LLM serving stack — think nanoGPT, but for *serving*.
 Built as a foundation for learning inference/serving engineering on an
 Apple Silicon MacBook (target: M4 Max/Pro, 48GB unified memory) with
-[Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B).
+[Qwen3-14B](https://huggingface.co/Qwen/Qwen3-14B).
 
 Every file is short and meant to be read. No frameworks doing magic:
 one engine interface, one HTTP server, one benchmark loop, one plotting script.
@@ -51,22 +51,23 @@ curl localhost:8000/v1/chat/completions -H 'Content-Type: application/json' \
   -d '{"messages":[{"role":"user","content":"hello"}],"max_tokens":32,"stream":true}'
 ```
 
-## On the M4: serving real Qwen3.8-27B
+## On the M4: serving real Qwen3-14B
 
-48GB unified memory comfortably fits a 4-bit build (~13GB weights). Check any
+Qwen3-14B is the baseline model. Its official BF16 checkpoint fits in 48GB,
+while a 4-bit build leaves much more room for context and experiments. Check any
 config before downloading with the memory calculator:
 
 ```bash
-python -m nanoserve.memory --params 27 --bits 4 --layers 64 --kv-heads 8 --head-dim 128
-# weights: 12.6 GiB | ctx 32k: +8 GiB KV cache -> ~22 GiB total. Fits.
+python -m nanoserve.memory --params 14.8 --bits 4 --layers 40 --kv-heads 8 --head-dim 128
+# weights: 6.9 GiB | ctx 32k: +5 GiB KV cache -> ~13 GiB total. Fits.
 ```
 
 Get weights (a community MLX 4-bit quant, or convert your own):
 
 ```bash
-python scripts/download.py <mlx-community 4-bit repo id>    # e.g. ...Qwen3.8-27B-4bit
+python scripts/download.py mlx-community/Qwen3-14B-4bit
 # or build your own 4-bit from official weights:
-python -m mlx_lm convert --hf-path Qwen/Qwen3.8-27B -q
+python -m mlx_lm convert --hf-path Qwen/Qwen3-14B -q
 ```
 
 Serve it:
@@ -81,9 +82,9 @@ length** (KV cache grows, so tokens/sec usually falls):
 ```bash
 python -m nanoserve.bench --engine mlx --model <model-path> \
     --prompt-tokens 128 1024 4096 16384 32768 \
-    --max-tokens 256 --repeats 3 --label 4bit --out results/qwen27b.jsonl
+    --max-tokens 256 --repeats 3 --label 4bit --out results/qwen14b.jsonl
 
-python -m nanoserve.plot results/qwen27b.jsonl --out results
+python -m nanoserve.plot results/qwen14b.jsonl --out results
 ```
 
 ## What to measure (the learning curriculum)
