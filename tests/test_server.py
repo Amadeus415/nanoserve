@@ -11,6 +11,7 @@ from nanoserve.server import app, state
 def make_client() -> TestClient:
     state.settings = Settings(engine="mock", model_id="mock-27b")
     state.engine = MockEngine(model_id="mock-27b", words_per_second=100_000)
+    state.last_stats = None
     return TestClient(app)
 
 

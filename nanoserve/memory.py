@@ -83,7 +83,7 @@ def report(
                             dtype_bytes=kv_dtype_bytes)
         total = w + kv + overhead_gb * GIB
         fits = "yes" if total < budget_gb * GIB else "NO"
-        lines.append(f"{seq:>10} {kv / GIB:>10.1f}GiB {total / GIB:>10.1f}GiB {fits:>>10}")
+        lines.append(f"{seq:>10} {kv / GIB:>10.1f}GiB {total / GIB:>10.1f}GiB {fits:>10}")
     return "\n".join(lines)
 
 
