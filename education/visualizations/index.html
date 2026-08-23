@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nanoserve explorer</title>
+<style>
+  :root {
+    --bg: #fafaf7; --panel: #ffffff; --ink: #2b2a26; --muted: #7a776f;
+    --accent: #e07a5f; --blue: #3d7ea6; --green: #5a9367; --line: #e6e3dc;
+    --prefill: #e8b04b; --decode: #3d7ea6; --kv: #b5838d; --weights: #8d99ae;
+    --bad: #b3402a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    font-family: ui-sans-serif, -apple-system, "Helvetica Neue", sans-serif;
+    background: var(--bg); color: var(--ink); }
+  svg#scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .card {
+    position: absolute; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; font-size: 13px; line-height: 1.45;
+    box-shadow: 0 2px 10px rgba(60,55,40,.06);
+  }
+  #controls { top: 16px; left: 16px; width: 250px; max-height: calc(100vh - 120px); overflow-y: auto; z-index: 3; }
+  #readouts { bottom: 16px; right: 16px; width: 280px; z-index: 3; }
+  #info { top: 16px; right: 16px; width: 300px; display: none; z-index: 4; }
+  h1 { font-size: 14px; margin: 0 0 2px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 11.5px; margin-bottom: 10px; }
+  label { display: block; margin-top: 10px; font-weight: 600; font-size: 12px; }
+  label span.val { float: right; font-weight: 400; color: var(--muted);
+    font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin-top: 2px; }
+  .bits { display: flex; gap: 6px; margin-top: 4px; }
+  .bits button {
+    flex: 1; padding: 5px 0; border: 1px solid var(--line); border-radius: 7px;
+    background: #fff; cursor: pointer; font-size: 12px; color: var(--ink);
+  }
+  .bits button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  button.primary {
+    flex: 1; padding: 7px 0; border: none; border-radius: 8px; cursor: pointer;
+    background: var(--ink); color: #fff; font-size: 13px; font-weight: 600;
+  }
+  button.primary.running { background: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td { padding: 2px 0; font-size: 12.5px; }
+  td:last-child { text-align: right; font-weight: 600; }
+  tr.total td { border-top: 1px solid var(--line); padding-top: 6px; }
+  #fits { display:inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700; background: #e4efe6; color: var(--green); }
+  #fits.no { background: #f7e3de; color: var(--bad); }
+  #phasebar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: min(520px, 44vw); text-align: center; z-index: 2; }
+  #phasename { font-size: 13px; font-weight: 700; margin-bottom: 6px; min-height: 17px; }
+  #track { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
+  #prefillfill { position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: var(--prefill); transition: width .1s linear; }
+  #decodefill { position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: var(--decode); opacity:.85; transition: width .1s linear; }
+  .legend { margin-top: 8px; color: var(--muted); font-size: 11px; }
+  #info h2 { font-size: 13px; margin: 0 4px 4px 0; }
+  #info p { margin: 4px 0; }
+  #info code { background: #f1efe9; border-radius: 4px; padding: 1px 5px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+  #closeinfo { position: absolute; top: 8px; right: 10px; border: none; background: none;
+    cursor: pointer; color: var(--muted); font-size: 15px; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 12px;
+    border-top: 1px dashed var(--line); padding-top: 8px; }
+
+  /* svg pieces */
+  [data-k] { cursor: pointer; }
+  .box   { fill: #fff; stroke: var(--line); stroke-width: 1.5; rx: 12; }
+  .engine{ fill: #fdfcf9; stroke: #cfc9bd; stroke-dasharray: 6 5; }
+  .wire  { fill: none; stroke: #cfc9bd; stroke-width: 2.5; }
+  .lbl   { fill: var(--muted); font-size: 13px; font-weight: 700; }
+  .sub2  { fill: var(--muted); font-size: 11px; }
+  .val   { fill: var(--ink); font-size: 11.5px; font-weight: 600;
+           font-variant-numeric: tabular-nums; }
+  .bar-w { fill: var(--weights); transition: height .15s, y .15s; }
+  .bar-k { fill: var(--kv);      transition: height .15s, y .15s; }
+  .over  { fill: var(--bad) !important; }
+  .budget{ stroke: var(--accent); stroke-dasharray: 5 4; stroke-width: 1.5; }
+  #compute { fill: #fff; stroke: var(--ink); stroke-width: 1.5;
+             transition: fill .08s; }
+  #compute.hot { fill: #f5c9bc; }
+  .dot-p { fill: var(--prefill); } .dot-g { fill: var(--decode); }
+  .dot-r { fill: #9b8f85; }
+</style>
+</head>
+<body>
+
+<svg id="scene" viewBox="0 0 1200 620" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cfc9bd"/>
+    </marker>
+  </defs>
+
+  <!-- request path: client -> server -> engine (drawn first so bars sit on top) -->
+  <path id="promptPath" class="wire" d="M132,308 L716,308" marker-end="url(#arr)"/>
+  <!-- response path: engine -> client, over the top -->
+  <path id="returnPath" class="wire" d="M770,242 C770,70 220,55 88,276" marker-end="url(#arr)"/>
+  <text class="sub2" x="430" y="78">SSE token stream &middot; one token at a time</text>
+
+  <!-- client -->
+  <g data-k="client">
+    <rect class="box" x="42" y="278" width="90" height="60" rx="14"/>
+    <text class="lbl" x="87" y="304" text-anchor="middle">client</text>
+    <text class="sub2" x="87" y="320" text-anchor="middle">your chat app</text>
+  </g>
+
+  <!-- server -->
+  <g data-k="server">
+    <rect class="box" x="172" y="276" width="112" height="64" rx="12"/>
+    <text class="lbl" x="228" y="302" text-anchor="middle">server</text>
+    <text class="sub2" x="228" y="318" text-anchor="middle">server.py &middot; FastAPI</text>
+  </g>
+
+  <!-- engine -->
+  <rect class="engine" x="340" y="130" width="580" height="370" rx="16"/>
+  <text class="lbl" x="360" y="155">engine &middot; mlx-lm <tspan class="sub2">(engine.py)</tspan></text>
+
+  <!-- memory bars, scaled against the machine's budget -->
+  <g data-k="weights">
+    <rect id="barW" class="bar-w" x="385" y="401" width="64" height="29"/>
+    <text id="barWLbl" class="val" x="417" y="452" text-anchor="middle"></text>
+    <text class="sub2" x="417" y="468" text-anchor="middle">weights</text>
+  </g>
+  <g data-k="kv">
+    <rect id="barK" class="bar-k" x="485" y="428" width="64" height="2"/>
+    <text id="barKLbl" class="val" x="517" y="420" text-anchor="middle"></text>
+    <text class="sub2" x="517" y="468" text-anchor="middle">KV cache</text>
+  </g>
+  <line class="budget" x1="365" y1="230" x2="575" y2="230"/>
+  <text class="sub2" x="365" y="222" style="fill:var(--accent)">48 GiB budget</text>
+  <text class="sub2" x="385" y="492">memory &middot; same math as memory.py</text>
+
+  <!-- the bandwidth pipe: every decode step must pull ALL bytes through here -->
+  <g data-k="pipe">
+    <rect x="585" y="282" width="118" height="22" rx="11" fill="#f1efe9" stroke="#cfc9bd"/>
+    <text class="sub2" x="644" y="330" text-anchor="middle">memory bandwidth</text>
+    <text class="val"  x="644" y="346" text-anchor="middle">&le; 400 GB/s</text>
+  </g>
+
+  <!-- compute -->
+  <g data-k="compute">
+    <rect id="compute" x="720" y="245" width="100" height="100" rx="14"/>
+    <text class="lbl" x="770" y="290" text-anchor="middle">compute</text>
+    <text class="sub2" x="770" y="306" text-anchor="middle">one forward pass</text>
+  </g>
+
+  <!-- the formula that explains everything -->
+  <text class="sub2" x="630" y="480" text-anchor="middle">decode speed &#8776; bandwidth &#247; bytes read per token</text>
+</svg>
+
+<div class="card" id="controls">
+  <h1>nanoserve explorer</h1>
+  <div class="sub">watch a request move through the serving stack</div>
+
+  <label>Prompt tokens <span class="val" id="v-prompt"></span></label>
+  <input type="range" id="prompt" min="16" max="16384" step="16" value="1024">
+
+  <label>Max new tokens <span class="val" id="v-maxtok"></span></label>
+  <input type="range" id="maxtok" min="16" max="512" step="16" value="128">
+
+  <label>Weight precision (bits)</label>
+  <div class="bits" id="bits">
+    <button data-b="16">16</button><button data-b="8">8</button>
+    <button data-b="4" class="on">4</button><button data-b="2">2</button>
+  </div>
+
+  <label>Model size <span class="val" id="v-params"></span></label>
+  <input type="range" id="params" min="1" max="70" step="0.1" value="14.8">
+
+  <div class="row">
+    <button class="primary" id="run">&#9654; Send request</button>
+  </div>
+  <div class="hint">
+    click any part of the diagram for an explanation
+  </div>
+</div>
+
+<div class="card" id="readouts">
+  <h1>live metrics</h1>
+  <div class="sub">same formulas as nanoserve/memory.py</div>
+  <table>
+    <tr><td>weights</td><td id="r-w">&ndash;</td></tr>
+    <tr><td>KV cache / token</td><td id="r-kvpt">&ndash;</td></tr>
+    <tr><td>KV cache now</td><td id="r-kv">&ndash;</td></tr>
+    <tr><td>bytes moved / decoded token</td><td id="r-read">&ndash;</td></tr>
+    <tr class="total"><td>total footprint</td><td id="r-total">&ndash;</td></tr>
+    <tr><td>TTFT (simulated)</td><td id="r-ttft">&ndash;</td></tr>
+    <tr><td>decode speed (simulated)</td><td id="r-tps">&ndash;</td></tr>
+  </table>
+  <span id="fits">fits 48 GiB</span>
+</div>
+
+<div class="card" id="info">
+  <button id="closeinfo">&times;</button>
+  <h2 id="info-title"></h2>
+  <p id="info-body"></p>
+</div>
+
+<div id="phasebar">
+  <div id="phasename"></div>
+  <div id="track"><div id="decodefill"></div><div id="prefillfill"></div></div>
+  <div class="legend">
+    <span style="color:var(--prefill)">&#9632;</span> prompt&nbsp;
+    <span style="color:var(--decode)">&#9632;</span> generated token&nbsp;
+    <span style="color:#9b8f85">&#9632;</span> memory reads&nbsp;
+    <span style="color:var(--kv)">&#9632;</span> KV cache&nbsp;
+    <span style="color:var(--weights)">&#9632;</span> weights
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ */
+/* Memory math — mirrors nanoserve/memory.py exactly                    */
+/* ------------------------------------------------------------------ */
+const GIB = 1024 ** 3;
+const weightsBytes = (pB, bits) => Math.round(pB * 1e9 * bits / 8);
+// kv_bytes_per_token = 2 * n_layers * n_kv_heads * head_dim * dtype_bytes
+const kvPerToken = () => 2 * LAYERS * KV_HEADS * HEAD_DIM * 2;
+const BANDWIDTH = 400e9;      // ~M4 Max effective GB/s
+const PREFILL_TPS = 3000;     // prefill is compute-bound: big & parallel
+const LAYERS = 40, KV_HEADS = 8, HEAD_DIM = 128, BUDGET = 48;
+
+let PROMPT = 1024, MAXTOK = 128, BITS = 4, PARAMS_B = 14.8;
+
+const fmtGib = b => (b / GIB).toFixed(1) + ' GiB';
+
+const sim = {
+  running: false, done: false, phase: 'idle',
+  gen: 0, tPhase: 0, durPrefill: 0,
+};
+const ttftSeconds = () => PROMPT / PREFILL_TPS;
+const kvBytes     = () => kvPerToken() * (PROMPT + sim.gen);
+const decodeTps   = () => BANDWIDTH / (weightsBytes(PARAMS_B, BITS) + kvBytes());
+
+/* ------------------------------------------------------------------ */
+/* SVG helpers                                                          */
+/* ------------------------------------------------------------------ */
+const svgNS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+function dot(cls) {
+  const c = document.createElementNS(svgNS, 'circle');
+  c.setAttribute('r', 6); c.setAttribute('class', cls); c.style.display = 'none';
+  $('scene').appendChild(c); return c;
+}
+// move a circle along an svg path; k in [0,1]
+function placeAlong(c, path, len, k) {
+  const p = path.getPointAtLength(k * len);
+  c.setAttribute('cx', p.x); c.setAttribute('cy', p.y);
+}
+const promptPath = $('promptPath'), returnPath = $('returnPath');
+const promptLen = promptPath.getTotalLength(), returnLen = returnPath.getTotalLength();
+
+// pools keep the DOM small during long decode runs
+const promptDots = Array.from({length: 20}, () => dot('dot-p'));
+const readDotsW  = Array.from({length: 4}, () => dot('dot-r'));
+const readDotsK  = Array.from({length: 4}, () => dot('dot-r'));
+const genDots = [];                       // transient generated-token dots
+const flights = [];                       // {el, path, len, t, dur, done}
+function fly(el, path, len, dur, done) {
+  el.style.display = ''; flights.push({el, path, len, t: 0, dur, done});
+}
+
+/* ------------------------------------------------------------------ */
+/* Simulation                                                           */
+/* ------------------------------------------------------------------ */
+const timeScale = 8;   // visual seconds per real second — keeps runs watchable
+const STEP_MIN = .1;   // clamp: tiny models would otherwise blur into one flash
+
+function resetSim(msg) {
+  sim.running = false; sim.done = false; sim.phase = 'idle';
+  sim.gen = 0; sim.tPhase = 0;
+  flights.length = 0; genDots.forEach(d => d.remove()); genDots.length = 0;
+  [...promptDots, ...readDotsW, ...readDotsK].forEach(d => d.style.display = 'none');
+  $('run').innerHTML = '&#9654; Send request';
+  $('run').classList.remove('running');
+  $('phasename').textContent = msg || '';
+  setFills(0, 0);
+  updateBars();
+  updateReadouts();
+}
+
+function startRun() {
+  resetSim();
+  // real TTFT can be milliseconds; slow it down so the burst is visible
+  sim.durPrefill = Math.min(Math.max(ttftSeconds() / timeScale, .9), 2.5);
+  sim.running = true; sim.phase = 'prefill';
+  $('run').innerHTML = '&#9632; Stop';
+  $('run').classList.add('running');
+}
+
+function finishRun() {
+  sim.running = false; sim.done = true;
+  $('run').innerHTML = '&#9654; Send request';
+  $('run').classList.remove('running');
+  $('phasename').textContent =
+    `done — ${MAXTOK} tokens generated · ${fmtGib(kvBytes())} of KV cache left behind`;
+}
+
+function pulseCompute(ms) {
+  $('compute').classList.add('hot');
+  setTimeout(() => $('compute').classList.remove('hot'), ms);
+}
+
+function tick(dt) {
+  if (!sim.running) return;
+  sim.tPhase += dt;
+
+  if (sim.phase === 'prefill') {
+    const frac = Math.min(sim.tPhase / sim.durPrefill, 1);
+    setFills(frac, 0);
+    $('phasename').textContent =
+      'PREFILL — whole prompt processed in ONE parallel pass (compute-bound)';
+    // stagger dots across the window so the "many tokens at once" idea shows
+    const n = promptDots.length;
+    promptDots.forEach((d, i) => {
+      const start = sim.durPrefill * .75 * (i / n);
+      if (sim.tPhase >= start && !d._busy) {
+        d._busy = true;
+        fly(d, promptPath, promptLen, .55, null);
+      }
+    });
+    if (frac >= 1) {
+      sim.phase = 'decode'; sim.tPhase = 0; sim.gen = 0;
+      updateBars();                       // KV jumps to full prompt length at once
+      pulseCompute(180);
+      emitGen(.7);
+    }
+  }
+  else if (sim.phase === 'decode') {
+    // each step = one forward pass = re-read ALL weights + ALL KV through the pipe
+    const stepDur = Math.max((1 / decodeTps()) / timeScale, STEP_MIN);
+    const totalSteps = MAXTOK;
+    const target = Math.min(Math.floor(sim.tPhase / stepDur), totalSteps);
+    while (sim.gen < target) {
+      sim.gen++;
+      spawnReadDots(stepDur);
+      pulseCompute(Math.min(stepDur * 400, 90));
+      emitGen(stepDur * 1.3);
+      if (sim.gen % 4 === 0 || sim.gen === totalSteps) updateBars();
+    }
+    setFills(1, target / totalSteps);
+    $('phasename').textContent =
+      `DECODE — step ${sim.gen}/${totalTokens()} · re-reads weights + KV every token`;
+    if (sim.gen >= totalSteps) finishRun();
+  }
+}
+
+const totalTokens = () => MAXTOK;
+
+function emitGen(dur) {
+  const d = dot('dot-g'); genDots.push(d);
+  fly(d, returnPath, returnLen, dur, () => {
+    setTimeout(() => {
+      d.remove();
+      const i = genDots.indexOf(d); if (i >= 0) genDots.splice(i, 1);
+    }, 300);
+  });
+}
+
+function spawnReadDots(stepDur) {
+  const dur = Math.max(stepDur * .7, .06);
+  // reads are straight segments bar -> pipe -> compute on throwaway paths
+  const seg = (fromX, fromY) => {
+    const p = document.createElementNS(svgNS, 'path');
+    p.setAttribute('d', `M${fromX},${fromY} L644,293 L716,293`);
+    p.setAttribute('fill', 'none'); sceneRoot.appendChild(p);
+    return [p, p.getTotalLength()];
+  };
+  readDotsW.forEach(d => { if (!d._busy) { d._busy = true;
+    const [p, len] = seg(449, 380); flyOn(d, p, len, dur, () => p.remove()); } });
+  readDotsK.forEach(d => { if (!d._busy) { d._busy = true;
+    const [p, len] = seg(549, 380); flyOn(d, p, len, dur, () => p.remove()); } });
+}
+const sceneRoot = $('scene');
+function flyOn(el, path, len, dur, done) {
+  el.style.display = ''; flights.push({el, path, len, t: 0, dur, done});
+}
+
+function setFills(pre, dec) {
+  $('prefillfill').style.width = pre * 100 + '%';
+  $('decodefill').style.width = dec * 100 + '%';
+}
+
+/* ------------------------------------------------------------------ */
+/* Memory bars — heights use the SAME px/GiB scale, so you can compare  */
+/* footprint against the budget line by eye                             */
+/* ------------------------------------------------------------------ */
+const BASELINE = 430, PX_PER_GIB = 200 / 48, BAR_TOP = 170;
+function updateBars() {
+  const wGiB = weightsBytes(PARAMS_B, BITS) / GIB;
+  const kGiB = kvPerToken() * (PROMPT + sim.gen) / GIB;
+  const fits = wGiB + kGiB + 1 <= BUDGET;          // +1 GiB runtime overhead
+
+  const wH = Math.min(wGiB * PX_PER_GIB, BASELINE - BAR_TOP);
+  $('barW').setAttribute('height', Math.max(wH, 3));
+  $('barW').setAttribute('y', BASELINE - Math.max(wH, 3));
+  $('barWLbl').textContent = fmtGib(weightsBytes(PARAMS_B, BITS));
+
+  const kH = Math.max(Math.min(kGiB * PX_PER_GIB, BASELINE - BAR_TOP), 2);
+  $('barK').setAttribute('height', kH);
+  $('barK').setAttribute('y', BASELINE - kH);
+  $('barKLbl').textContent = fmtGib(kvBytes()) + ' · ' +
+    (PROMPT + sim.gen).toLocaleString() + ' tok';
+
+  $('barW').classList.toggle('over', !fits);
+  $('barK').classList.toggle('over', !fits);
+}
+
+function updateReadouts() {
+  const wB = weightsBytes(PARAMS_B, BITS), kvt = kvPerToken(), kv = kvt * (PROMPT + sim.gen);
+  const total = wB + kv + GIB;
+  $('r-w').textContent = fmtGib(wB);
+  $('r-kvpt').textContent = (kvt / 1024).toFixed(0) + ' KiB';
+  $('r-kv').textContent = fmtGib(kv);
+  $('r-read').textContent = fmtGib(wB + kv);
+  $('r-total').textContent = fmtGib(total);
+  $('r-ttft').textContent = ttftSeconds().toFixed(2) + ' s';
+  $('r-tps').textContent = decodeTps().toFixed(0) + ' tok/s';
+  const fits = total < BUDGET * GIB, el = $('fits');
+  el.textContent = fits ? `fits ${BUDGET} GiB` : `over ${BUDGET} GiB budget`;
+  el.classList.toggle('no', !fits);
+}
+
+/* ------------------------------------------------------------------ */
+/* Click-to-learn                                                       */
+/* ------------------------------------------------------------------ */
+const INFO = {
+  client: {t:'Client', b:`Sends an OpenAI-style <code>/v1/chat/completions</code> request and receives generated tokens as a stream of SSE events — the first token arrives after TTFT, then one event per decode step.`},
+  server: {t:'Server', b:`<code>nanoserve/server.py</code> — a thin FastAPI app. It validates the request, hands the prompt to the engine, and forwards tokens as they are produced. No batching magic to hide behind.`},
+  weights:{t:'Weights', b:`Size is real math: <code>params × bits/8</code> bytes (<code>memory.py:weights_bytes()</code>). Every decoded token re-reads ALL of them — that's why quantizing to fewer bits makes generation <i>faster</i>, not just smaller. Try the bit buttons.`},
+  kv:     {t:'KV cache', b:`Each token's attention keys/values are stored so they're never recomputed. Cost per token: <code>2 × layers × kv_heads × head_dim × 2 bytes</code> (<code>memory.py:kv_cache_bytes()</code>). It grows with EVERY token — prompt and generated — and is never freed until the request ends.`},
+  pipe:   {t:'Memory bandwidth', b:`THE bottleneck of local decoding. Each decode step must pull every weight byte and every KV byte through this finite pipe before the token can be computed, so tok/s ≈ bandwidth ÷ bytes-per-token. More context or bigger weights → slower tokens, mechanically.`},
+  compute:{t:'Compute', b:`Runs one forward pass per generated token during decode (strictly sequential). During prefill it processes the WHOLE prompt in a single parallel pass — that's why prefill is fast even for long prompts.`},
+};
+$('scene').addEventListener('click', e => {
+  const g = e.target.closest('[data-k]');
+  if (!g || !INFO[g.dataset.k]) return;
+  $('info-title').textContent = INFO[g.dataset.k].t;
+  $('info-body').innerHTML = INFO[g.dataset.k].b;
+  $('info').style.display = 'block';
+});
+$('closeinfo').onclick = () => $('info').style.display = 'none';
+
+/* ------------------------------------------------------------------ */
+/* UI wiring                                                            */
+/* ------------------------------------------------------------------ */
+function syncLabels() {
+  $('v-prompt').textContent = PROMPT.toLocaleString() + ' tok';
+  $('v-maxtok').textContent = MAXTOK + ' tok';
+  $('v-params').textContent = PARAMS_B + 'B params';
+}
+$('prompt').oninput = e => { PROMPT = +e.target.value; resetSim(); syncLabels(); };
+$('maxtok').oninput = e => { MAXTOK = +e.target.value; resetSim(); syncLabels(); };
+$('params').oninput = e => { PARAMS_B = +e.target.value; resetSim(); syncLabels(); };
+$('bits').onclick = e => {
+  if (e.target.dataset.b) {
+    BITS = +e.target.dataset.b;
+    [...$('bits').children].forEach(b => b.classList.toggle('on', b === e.target));
+    resetSim();
+  }
+};
+$('run').onclick = () => sim.running ? resetSim() : startRun();
+
+/* ------------------------------------------------------------------ */
+/* Main loop                                                            */
+/* ------------------------------------------------------------------ */
+syncLabels(); resetSim('press ▶ Send request to simulate one API call');
+
+let last = performance.now();
+function frame() {
+  const now = performance.now();
+  const dt = Math.min((now - last) / 1000, .05);
+  last = now;
+  try {
+    tick(dt);
+    for (let i = flights.length - 1; i >= 0; i--) {
+      const f = flights[i]; f.t += dt;
+      const k = Math.min(f.t / f.dur, 1), e = 1 - Math.pow(1 - k, 2);
+      placeAlong(f.el, f.path, f.len, e);
+      if (k >= 1) {
+        flights.splice(i, 1);
+        f.el._busy = false;
+        f.done ? f.done() : f.el.style.display = 'none';
+      }
+    }
+    updateReadouts();
+  } catch (err) { (window.__errs = window.__errs || []).push(String(err)); }
+}
+// rAF is suspended in occluded windows, which would freeze a running
+// simulation; timers keep ticking everywhere, so just use those
+(function step(){ frame(); setTimeout(step, 16); })();
+window.__nanoviz = { frame, sim, startRun, finishRun };
+</script>
+</body>
+</html>
