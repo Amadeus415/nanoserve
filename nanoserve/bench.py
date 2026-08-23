@@ -104,8 +104,11 @@ def write_jsonl(rows: list[dict], path: str) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="nanoserve benchmark runner")
-    p.add_argument("--engine", default="mock", choices=["mock", "mlx"])
-    p.add_argument("--model", default=None, help="HF repo id or local path (mlx engine)")
+    p.add_argument("--engine", default="mock", choices=["mock", "mlx", "nanotrain"])
+    p.add_argument(
+        "--model", default=None,
+        help="HF/local MLX model or nanotrain checkpoint directory",
+    )
     p.add_argument("--prompt-tokens", type=int, nargs="+", default=[16],
                    help="approximate prompt lengths to test")
     p.add_argument("--max-tokens", type=int, nargs="+", default=[64],
@@ -121,6 +124,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    if args.engine == "nanotrain" and not args.model:
+        raise SystemExit("--engine nanotrain requires --model <checkpoint-directory>")
     settings = Settings(
         engine=args.engine,
         model_id=args.model or (

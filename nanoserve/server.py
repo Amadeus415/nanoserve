@@ -8,6 +8,7 @@ Endpoints:
 Run:
     NANOSERVE_ENGINE=mock python -m nanoserve.server          # no weights needed
     NANOSERVE_ENGINE=mlx NANOSERVE_MODEL=<repo> python -m nanoserve.server
+    NANOSERVE_ENGINE=nanotrain NANOSERVE_MODEL=<checkpoint> python -m nanoserve.server
 
 The response shapes mirror the OpenAI API closely enough that most eval and
 client tooling works unchanged; this is deliberately ~150 lines, not a

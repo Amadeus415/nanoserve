@@ -3,7 +3,7 @@
 Everything is overridable via environment variables so you can run
 experiments without editing code:
 
-    NANOSERVE_ENGINE=mock|mlx
+    NANOSERVE_ENGINE=mock|mlx|nanotrain
     NANOSERVE_MODEL=<huggingface repo id>
     NANOSERVE_THINKING=true|false
 """
@@ -37,7 +37,7 @@ def default_model_id() -> str:
 class Settings:
     """Runtime settings for the server and benchmark tools."""
 
-    engine: str = "auto"            # auto | mock | mlx
+    engine: str = "auto"            # auto | mock | mlx | nanotrain
     model_id: str = field(default_factory=default_model_id)
     host: str = "127.0.0.1"
     port: int = 8000

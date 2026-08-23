@@ -1,6 +1,6 @@
 import time
 
-from nanoserve.engine import MLXEngine, MockEngine
+from nanoserve.engine import MLXEngine, MockEngine, NanoTrainEngine
 
 
 def test_mock_stream_is_deterministic():
@@ -53,3 +53,11 @@ def test_mlx_prompt_uses_qwen3_thinking_setting():
     engine.thinking = False
 
     assert engine.count_tokens([{"role": "user", "content": "hi"}]) == 3
+
+
+def test_nanotrain_prompt_is_raw_message_content_not_chat_markup():
+    messages = [
+        {"role": "system", "content": "A stage direction."},
+        {"role": "user", "content": "ROMEO:"},
+    ]
+    assert NanoTrainEngine._prompt(messages) == "A stage direction.\nROMEO:"

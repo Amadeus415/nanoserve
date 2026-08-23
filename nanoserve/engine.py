@@ -6,7 +6,8 @@ swap backends without touching anything downstream:
 
     MockEngine  - deterministic fake tokens, zero deps. Runs on any laptop;
                   used for tests and for exercising server/bench plumbing.
-    MLXEngine   - real inference on Apple Silicon via mlx-lm.
+    MLXEngine       - real inference on Apple Silicon via mlx-lm.
+    NanoTrainEngine - a scratch-trained checkpoint from the sibling lab.
 
 Timing (TTFT, prefill/decode tok/s) is measured once, generically, in
 `BaseEngine.stream_stats` — engines only produce tokens.
@@ -187,10 +188,58 @@ class MLXEngine(BaseEngine):
             yield response.text
 
 
+# --------------------------------------------------------------------------- #
+# Scratch checkpoints from nanotrain. nanotrain owns the model and tokenizer;
+# nanoserve owns the transport, streaming measurements, and response shape.
+# --------------------------------------------------------------------------- #
+
+
+class NanoTrainEngine(BaseEngine):
+    """Serve a nanotrain checkpoint as raw text completion."""
+
+    name = "nanotrain"
+
+    def __init__(self, model_id: str):
+        try:
+            from nanotrain.checkpoint import load_checkpoint
+        except ImportError as error:
+            raise RuntimeError(
+                "NanoTrainEngine requires the sibling package: pip install -e ../nanotrain"
+            ) from error
+
+        self.model_id = model_id
+        self.model, self.tokenizer, self.config = load_checkpoint(model_id)
+
+    @staticmethod
+    def _prompt(messages: list[Message]) -> str:
+        # The v1 scratch model is a base completion model, not a chat model. Role
+        # templates would introduce byte patterns it never saw during training.
+        return "\n".join(message["content"] for message in messages)
+
+    def count_tokens(self, messages: list[Message]) -> int:
+        return len(self.tokenizer.encode(self._prompt(messages)))
+
+    def _stream(self, messages, *, max_tokens, temperature):
+        from nanotrain.generate import stream_text
+
+        yield from stream_text(
+            self.model,
+            self.tokenizer,
+            self._prompt(messages),
+            context_length=self.config.context_length,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+
 def build_engine(engine: str, model_id: str, *, thinking: bool = False) -> BaseEngine:
     """Factory used by the server and CLI tools."""
     if engine == "mock":
         return MockEngine(model_id=model_id)
     if engine == "mlx":
         return MLXEngine(model_id, thinking=thinking)
-    raise ValueError(f"unknown engine: {engine!r} (expected 'mock' or 'mlx')")
+    if engine == "nanotrain":
+        return NanoTrainEngine(model_id)
+    raise ValueError(
+        f"unknown engine: {engine!r} (expected 'mock', 'mlx', or 'nanotrain')"
+    )

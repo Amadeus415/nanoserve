@@ -105,6 +105,25 @@ python -m nanoserve.bench --engine mlx \
 python -m nanoserve.plot results/qwen14b.jsonl --out results
 ```
 
+## Serve a model you trained in nanotrain
+
+The sibling `nanotrain` project saves a small scratch model as a readable
+checkpoint directory. Install both editable packages into one environment,
+then point nanoserve at that directory:
+
+```bash
+pip install -e ../nanotrain
+
+NANOSERVE_ENGINE=nanotrain \
+NANOSERVE_MODEL=../nanotrain/checkpoints/001-nano-5m \
+python -m nanoserve.server
+```
+
+This path is deliberately raw text completion: message contents are joined as
+the prompt, without a chat template the scratch model never saw. nanotrain owns
+the model, tokenizer, and checkpoint format; nanoserve owns HTTP, SSE, and
+serving metrics.
+
 ## The lab: predict, measure, explain
 
 `bench.py` gives you numbers. `lab.py` makes them mean something, by forcing a
