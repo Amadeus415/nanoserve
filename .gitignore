@@ -10,9 +10,12 @@ dist/
 .DS_Store
 .env
 
-# benchmark artifacts (keep results/ dir via .gitkeep)
+# ad-hoc bench.py artifacts at the top level are throwaway
 results/*.jsonl
 results/*.png
+
+# NOTE: lab.py writes to results/<experiment-id>/ and those ARE tracked on
+# purpose — runs.jsonl, env.json, report.md and charts are the lab notebook.
 
 # model weights are never committed
 *.safetensors

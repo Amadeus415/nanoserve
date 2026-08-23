@@ -8,18 +8,30 @@ Apple Silicon MacBook (target: M4 Max/Pro, 48GB unified memory) with
 Every file is short and meant to be read. No frameworks doing magic:
 one engine interface, one HTTP server, one benchmark loop, one plotting script.
 
+New here? Start with the visual, end-to-end
+[getting-started guide](education/GETTING_STARTED.md), then use this README as
+the compact command reference.
+
 ```
 nanoserve/
+├── education/          guides, experiments, and interactive visualizations
+│   ├── GETTING_STARTED.md
+│   ├── LEARNING.md
+│   ├── experiments.md
+│   └── visualizations/index.html
 ├── nanoserve/
 │   ├── config.py     settings + env overrides
 │   ├── engine.py     Engine interface; MockEngine (any laptop), MLXEngine (Apple Silicon)
 │   ├── server.py     OpenAI-compatible chat API with SSE streaming + /metrics
 │   ├── bench.py      sweep prompt lengths / max_tokens -> JSONL rows of metrics
-│   ├── plot.py       JSONL -> PNG charts (decode tok/s, TTFT vs context)
+│   ├── lab.py        run a declared experiment: prediction + sweep + machine state
+│   ├── report.py     score prediction vs measurement, charts, markdown writeup
+│   ├── plot.py       ad-hoc JSONL -> PNG charts
 │   └── memory.py     weights + KV-cache memory math (fits-in-RAM calculator)
+├── experiments/          one TOML per experiment + STATUS.md log
 ├── scripts/download.py   pull weights from HuggingFace
 ├── tests/                runs anywhere, no MLX or weights required
-└── results/              benchmark outputs (jsonl + png)
+└── results/<exp-id>/     runs.jsonl, env.json, report.md, charts
 ```
 
 ## Quickstart
@@ -92,6 +104,51 @@ python -m nanoserve.bench --engine mlx \
 
 python -m nanoserve.plot results/qwen14b.jsonl --out results
 ```
+
+## The lab: predict, measure, explain
+
+`bench.py` gives you numbers. `lab.py` makes them mean something, by forcing a
+written numeric prediction *before* the run and scoring it afterwards.
+
+```bash
+python -m nanoserve.lab list                  # what exists, what's been run
+python -m nanoserve.lab run 000-smoke         # mock engine, ~15s, no weights
+python -m nanoserve.report 000-smoke          # scorecard + charts + writeup
+```
+
+Each experiment is one TOML file in `experiments/`:
+
+```bash
+python -m nanoserve.lab new 002-output-length --title "Output length vs latency"
+# edit experiments/002-output-length.toml — especially [prediction] — then run it
+```
+
+The spec holds the question, the hypothesis, the **prediction with its
+arithmetic**, and the sweep grid. Running it captures machine state (chip, RAM,
+AC power, thermal pressure before/after, git sha, mlx version) alongside the
+measurements, and discards `warmup` runs so cold weights don't skew the median.
+
+`report.py` then writes `results/<id>/report.md` containing:
+
+- a **scorecard**: predicted vs measured per point, with % error
+- median results with min/max spread (noisy runs are visible, not hidden)
+- measured-vs-predicted chart, TTFT, peak RAM, and a **thermal drift chart**
+  (decode tok/s by run order — a downward slope means the machine got hot, not
+  that your variable did anything)
+- a blank *What I learned* section you fill in yourself
+
+and appends a row to `experiments/STATUS.md`.
+
+`001-context-decode.toml` is ready to run on the M4 with predictions already
+derived from KV-cache arithmetic — start there:
+
+```bash
+caffeinate -i python -m nanoserve.lab run 001-context-decode
+python -m nanoserve.report 001-context-decode
+```
+
+See [`education/LEARNING.md`](education/LEARNING.md) for the reading list and
+the reasoning behind this loop.
 
 ## What to measure (the learning curriculum)
 

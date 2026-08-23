@@ -1,0 +1,77 @@
+id = "001-context-decode"
+title = "Decode throughput vs context length (Qwen3-14B 4-bit)"
+
+question = """
+By how much does decode throughput fall as context grows from 128 to 32,768
+tokens? Specifically: is decode tok/s at 32K within 10% of the value predicted
+by pure memory-bandwidth arithmetic (weights + KV cache read per step)?
+"""
+
+hypothesis = """
+Decode is memory-bandwidth-bound: every generated token requires re-reading all
+model weights plus the entire KV cache. Weights are constant, KV grows linearly
+with context, so decode tok/s should fall as 1/(W + kv_per_token * ctx) — a
+hyperbola that is nearly flat at short context and bites hard past ~16K.
+
+If instead the curve falls faster than that, something beyond bandwidth is in
+play (attention compute growth, allocator behaviour, or thermal throttling —
+check the drift chart before blaming physics).
+"""
+
+[prediction]
+metric = "decode_tps"
+x = "prompt_tokens_target"
+reasoning = """
+Machine: M4 Pro, ~273 GB/s unified memory bandwidth.
+Real kernels don't hit peak; assume 70% achieved -> ~191 GB/s effective.
+
+Weights (Qwen3-14B, 4-bit):
+    14.8e9 params x 0.5 bytes ~= 7.4 GB
+
+KV cache per token (GQA: 40 layers, 8 KV heads, head_dim 128, fp16):
+    2 x 40 x 8 x 128 x 2 bytes = 163,840 B = 0.164 MB/token
+
+    ctx     KV size
+    128     0.02 GB
+    1024    0.17 GB
+    4096    0.67 GB
+    16384   2.68 GB
+    32768   5.37 GB
+
+Bytes moved per decode step = 7.4 GB + KV, so:
+    tok/s = 191 / (7.4 + KV)
+
+    128    -> 25.8
+    1024   -> 25.2
+    4096   -> 23.7
+    16384  -> 19.0
+    32768  -> 15.0
+
+Headline claim: 32K decode should be ~58% of 128-token decode.
+The absolute numbers depend on that 70% efficiency guess and may be off;
+the RATIO between points does not, so judge the shape first, the level second.
+"""
+
+[prediction.values]
+128 = 25.8
+1024 = 25.2
+4096 = 23.7
+16384 = 19.0
+32768 = 15.0
+
+[sweep]
+engine = "mlx"
+model = ""                 # blank -> weights/mlx-community__Qwen3-14B-4bit if present
+prompt_tokens = [128, 1024, 4096, 16384, 32768]
+max_tokens = [256]         # long enough that decode dominates, short enough to finish
+temperature = 0.7
+repeats = 3
+warmup = 1
+label = "q4"
+
+[control]
+notes = """
+Plugged into AC, lid open, no other heavy apps, Activity Monitor closed.
+Run under `caffeinate -i`. Expect ~15-20 min; check the drift chart afterwards
+before trusting the 32K point — that one runs last and runs hottest.
+"""
