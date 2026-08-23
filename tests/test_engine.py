@@ -1,6 +1,6 @@
 import time
 
-from nanoserve.engine import MockEngine
+from nanoserve.engine import MLXEngine, MockEngine
 
 
 def test_mock_stream_is_deterministic():
@@ -39,3 +39,17 @@ def test_mock_delay_slows_decode():
     slow_s = time.perf_counter() - t0
 
     assert slow_s > fast_s * 3  # artificial latency is reflected in stats
+
+
+def test_mlx_prompt_uses_qwen3_thinking_setting():
+    class Tokenizer:
+        def apply_chat_template(self, messages, **kwargs):
+            assert messages == [{"role": "user", "content": "hi"}]
+            assert kwargs == {"add_generation_prompt": True, "enable_thinking": False}
+            return [1, 2, 3]
+
+    engine = MLXEngine.__new__(MLXEngine)
+    engine.tokenizer = Tokenizer()
+    engine.thinking = False
+
+    assert engine.count_tokens([{"role": "user", "content": "hi"}]) == 3

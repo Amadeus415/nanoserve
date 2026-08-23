@@ -157,22 +157,28 @@ class MLXEngine(BaseEngine):
 
     name = "mlx"
 
-    def __init__(self, model_id: str):
+    def __init__(self, model_id: str, *, thinking: bool = False):
         from mlx_lm import load  # imported here so mock mode needs no MLX
 
         self.model_id = model_id
+        self.thinking = thinking
         self.model, self.tokenizer = load(model_id)
 
+    def _prompt(self, messages: list[Message]):
+        return self.tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt=True,
+            enable_thinking=self.thinking,
+        )
+
     def count_tokens(self, messages: list[Message]) -> int:
-        return len(self.tokenizer.apply_chat_template(messages))
+        return len(self._prompt(messages))
 
     def _stream(self, messages, *, max_tokens, temperature):
         from mlx_lm import stream_generate
         from mlx_lm.sample_utils import make_sampler
 
-        prompt = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True
-        )
+        prompt = self._prompt(messages)
         sampler = make_sampler(temp=temperature)
         for response in stream_generate(
             self.model, self.tokenizer, prompt=prompt,
@@ -181,10 +187,10 @@ class MLXEngine(BaseEngine):
             yield response.text
 
 
-def build_engine(engine: str, model_id: str) -> BaseEngine:
+def build_engine(engine: str, model_id: str, *, thinking: bool = False) -> BaseEngine:
     """Factory used by the server and CLI tools."""
     if engine == "mock":
         return MockEngine(model_id=model_id)
     if engine == "mlx":
-        return MLXEngine(model_id)
+        return MLXEngine(model_id, thinking=thinking)
     raise ValueError(f"unknown engine: {engine!r} (expected 'mock' or 'mlx')")

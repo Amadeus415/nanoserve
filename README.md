@@ -62,7 +62,8 @@ python -m nanoserve.memory --params 14.8 --bits 4 --layers 40 --kv-heads 8 --hea
 # weights: 6.9 GiB | ctx 32k: +5 GiB KV cache -> ~13 GiB total. Fits.
 ```
 
-Get weights (a community MLX 4-bit quant, or convert your own):
+Get weights (a community MLX 4-bit quant, or convert your own). Nanoserve
+automatically uses this local copy when it exists:
 
 ```bash
 python scripts/download.py mlx-community/Qwen3-14B-4bit
@@ -70,17 +71,22 @@ python scripts/download.py mlx-community/Qwen3-14B-4bit
 python -m mlx_lm convert --hf-path Qwen/Qwen3-14B -q
 ```
 
-Serve it:
+Serve it. On Apple Silicon, this now needs no model flags: `auto` finds MLX,
+and the default model is the 4-bit Qwen3-14B build (rather than the ~30 GB BF16
+checkpoint):
 
 ```bash
-NANOSERVE_ENGINE=mlx NANOSERVE_MODEL=<path-or-repo-id> python -m nanoserve.server
+python -m nanoserve.server
+
+# optional: show Qwen3's reasoning before its answer
+NANOSERVE_THINKING=true python -m nanoserve.server
 ```
 
 Benchmark it — the experiment that matters first is **decode speed vs context
 length** (KV cache grows, so tokens/sec usually falls):
 
 ```bash
-python -m nanoserve.bench --engine mlx --model <model-path> \
+python -m nanoserve.bench --engine mlx \
     --prompt-tokens 128 1024 4096 16384 32768 \
     --max-tokens 256 --repeats 3 --label 4bit --out results/qwen14b.jsonl
 

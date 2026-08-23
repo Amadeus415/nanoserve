@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Apple Silicon inference engine (mlx-lm only installs/builds on macOS arm64)
-mac = ["mlx-lm>=0.19"]
+mac = ["mlx-lm>=0.24"]
 viz = ["matplotlib>=3.9"]
 dev = ["pytest>=8", "httpx>=0.27", "matplotlib>=3.9"]
 

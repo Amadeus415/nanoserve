@@ -25,7 +25,7 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 
-from .config import BASELINE_MODEL, Settings
+from .config import Settings, default_model_id
 from .engine import BaseEngine, Message, Stats, build_engine
 
 
@@ -111,6 +111,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--max-tokens", type=int, nargs="+", default=[64],
                    help="generation lengths to test")
     p.add_argument("--temperature", type=float, default=0.7)
+    p.add_argument("--thinking", action="store_true",
+                   help="let Qwen3 emit its reasoning before the answer")
     p.add_argument("--repeats", type=int, default=1)
     p.add_argument("--label", default="", help="tag stored on every row")
     p.add_argument("--out", default="results/bench.jsonl")
@@ -119,10 +121,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
-    settings = Settings(engine=args.engine, model_id=args.model or (
-        BASELINE_MODEL if args.engine == "mlx" else "mock-qwen3-14b"
-    ))
-    engine = build_engine(settings.resolved_engine(), settings.model_id)
+    settings = Settings(
+        engine=args.engine,
+        model_id=args.model or (
+            default_model_id() if args.engine == "mlx" else "mock-qwen3-14b"
+        ),
+        thinking=args.thinking,
+    )
+    engine = build_engine(
+        settings.resolved_engine(), settings.model_id, thinking=settings.thinking
+    )
     rows = sweep(engine, args)
     write_jsonl(rows, args.out)
 

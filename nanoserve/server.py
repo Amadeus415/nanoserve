@@ -56,7 +56,9 @@ state = NanoServeState()
 def get_engine() -> BaseEngine:
     if state.engine is None:  # lazy-load so `mock` mode starts instantly
         s = state.settings
-        state.engine = build_engine(s.resolved_engine(), s.model_id)
+        state.engine = build_engine(
+            s.resolved_engine(), s.model_id, thinking=s.thinking
+        )
     return state.engine
 
 
