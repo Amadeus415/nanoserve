@@ -18,7 +18,7 @@ nanoserve/
 │   ├── GETTING_STARTED.md
 │   ├── LEARNING.md
 │   ├── experiments.md
-│   └── visualizations/index.html
+│   └── visualizations/    tour.html (analogies) + index.html (live request)
 ├── nanoserve/
 │   ├── config.py     settings + env overrides
 │   ├── engine.py     Engine interface; MockEngine (any laptop), MLXEngine (Apple Silicon)

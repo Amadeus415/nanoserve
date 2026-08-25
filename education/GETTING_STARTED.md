@@ -717,15 +717,19 @@ be confused.
 
 ## Use the interactive explorer
 
-The repository includes `education/visualizations/index.html`, a companion
-simulation of the request path, memory footprint, prefill, and decode. Open it
-locally:
+Two companions live in `education/visualizations/`:
+
+- [`tour.html`](visualizations/tour.html) — this guide as rooms, analogies, and
+  interactive exhibits (one stove, a growing stack of notes, a hallway).
+- [`index.html`](visualizations/index.html) — a live simulation of one request
+  through memory and bandwidth.
 
 ```bash
+open education/visualizations/tour.html
 open education/visualizations/index.html
 ```
 
-Its speeds are illustrative. Use `bench.py` for measurements of this machine.
+Their speeds are illustrative. Use `bench.py` for measurements of this machine.
 
 ## A newcomer is finished when they can explain this
 

@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One stove — a visual tour of nanoserve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --chassis: #12151c;
+    --bench: #181e2a;
+    --raised: #232a3c;
+    --line: #3a4258;
+    --ink: #f0eadc;
+    --mute: #9aa3b5;
+    --paper: #f3e6c8;
+    --paper-ink: #2c2618;
+    --paper-mute: #6e634c;
+    --copper: #d08a4c;
+    --cyan: #5ec8c5;
+    --rose: #d4909c;
+    --steel: #8b93c4;
+    --ok: #7fbe8e;
+    --bad: #e06a4f;
+    --first: #f0c14b;
+    --rail: 210px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; background: var(--chassis); color: var(--ink); }
+  body {
+    font-family: "Bricolage Grotesque", "Avenir Next", sans-serif;
+    font-optical-sizing: auto;
+    line-height: 1.45;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 3px, rgba(255,255,255,.012) 3px 4px),
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.01) 3px 4px);
+  }
+  button, input { font: inherit; }
+  code, .mono, pre, kbd {
+    font-family: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    font-size: .86em;
+  }
+  a { color: var(--cyan); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--first); outline-offset: 3px;
+  }
+
+  .rail {
+    position: fixed; inset: 0 auto 0 0; width: var(--rail);
+    padding: 28px 18px; border-right: 1px solid var(--line);
+    background: rgba(18,21,28,.92); z-index: 6;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .rail .brand {
+    font-weight: 800; font-size: 15px; letter-spacing: -.02em;
+    margin-bottom: 18px; color: var(--ink);
+  }
+  .rail .brand span { display: block; color: var(--mute); font-weight: 500; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-top: 4px; }
+  .rail a {
+    color: var(--mute); text-decoration: none; font-size: 13px;
+    padding: 6px 8px; border-left: 2px solid transparent;
+  }
+  .rail a:hover { color: var(--ink); }
+  .rail a.on { color: var(--paper); border-left-color: var(--copper); }
+  .rail .aux { margin-top: auto; font-size: 12px; color: var(--mute); line-height: 1.4; }
+  .rail .aux a { padding: 0; border: 0; color: var(--cyan); }
+
+  main { margin-left: var(--rail); }
+  section.room {
+    min-height: 100vh; padding: 56px 56px 80px;
+    border-bottom: 1px solid var(--line);
+    display: grid; gap: 28px;
+    grid-template-columns: minmax(280px, 38%) 1fr;
+    align-items: start;
+    scroll-margin-top: 8px;
+  }
+  section.room.full { grid-template-columns: 1fr; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--copper); font-weight: 700; margin: 0 0 8px;
+  }
+  h1, h2, h3 { margin: 0 0 .4em; letter-spacing: -.03em; font-weight: 800; }
+  h1 { font-size: clamp(2.4rem, 5vw, 4.2rem); line-height: .95; max-width: 14ch; }
+  h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); line-height: 1.1; }
+  .lede { font-size: 1.15rem; color: var(--mute); max-width: 42ch; }
+  .copy p { color: var(--mute); margin: 0 0 1em; max-width: 48ch; }
+
+  .paper {
+    background: var(--paper); color: var(--paper-ink);
+    padding: 22px 24px; border-radius: 2px 10px 10px 2px;
+    box-shadow: 6px 8px 0 rgba(0,0,0,.25);
+    font-family: Newsreader, "Iowan Old Style", Georgia, serif;
+    font-size: 1.05rem; line-height: 1.45;
+  }
+  .paper .kicker {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--paper-mute); font-weight: 700; margin-bottom: 6px;
+  }
+  .paper em { font-style: italic; color: #5a3a1a; }
+  .paper strong { font-weight: 600; }
+
+  .stage {
+    background: var(--bench); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; min-height: 280px;
+    position: relative;
+  }
+  .stage header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px; gap: 12px;
+  }
+  .stage header h3 { font-size: 14px; font-weight: 700; }
+  .stage header span { color: var(--mute); font-size: 12px; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    background: var(--ink); color: var(--chassis); border: 0;
+    padding: 8px 14px; border-radius: 8px; font-weight: 700;
+    cursor: pointer;
+  }
+  .btn.ghost {
+    background: transparent; color: var(--ink); border: 1px solid var(--line);
+  }
+  .btn[aria-pressed="true"] { background: var(--copper); color: #1a1208; }
+
+  label.ctrl { display: block; font-size: 12px; color: var(--mute); margin-top: 10px; }
+  label.ctrl b { float: right; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--copper); }
+
+  .bits { display: flex; gap: 6px; margin-top: 6px; }
+  .bits button {
+    flex: 1; background: var(--raised); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 0; cursor: pointer; font-weight: 700;
+  }
+  .bits button.on { background: var(--ink); color: var(--chassis); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .chip {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; cursor: pointer; text-align: left; color: inherit;
+  }
+  .chip:hover, .chip.on { border-color: var(--copper); }
+  .chip b { display: block; font-size: 14px; }
+  .chip span { color: var(--mute); font-size: 12px; }
+
+  pre.cmd {
+    background: #0d1016; color: #d7d1c3; padding: 14px 16px; border-radius: 10px;
+    overflow-x: auto; border: 1px solid var(--line); line-height: 1.5;
+  }
+
+  /* hero mill */
+  .mill { min-height: 280px; }
+  .path { fill: none; stroke: var(--line); stroke-width: 2; }
+  .path.live { stroke: var(--copper); }
+  .dot { fill: var(--first); }
+  .box { fill: var(--raised); stroke: var(--line); }
+  .lab { fill: var(--mute); font-size: 11px; font-family: "Bricolage Grotesque", sans-serif; }
+
+  .meal { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .plate {
+    min-height: 160px; background: #0f131c; border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; position: relative;
+  }
+  .plate .words { display: flex; flex-wrap: wrap; gap: 6px; min-height: 72px; }
+  .tok {
+    display: inline-block; padding: 3px 8px; border-radius: 5px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+  }
+  .tok.p { background: rgba(94,200,197,.18); color: var(--cyan); }
+  .tok.g { background: rgba(208,138,76,.2); color: var(--copper); }
+  .tok.ghost { opacity: .18; }
+  .cloche {
+    position: absolute; inset: 12px; background: rgba(18,21,28,.88);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; color: var(--mute); font-size: 13px;
+    transition: opacity .3s;
+  }
+  .cloche.off { opacity: 0; pointer-events: none; }
+  .clock { margin-top: 10px; font-variant-numeric: tabular-nums; color: var(--mute); font-size: 12px; }
+  .clock .mark { color: var(--first); font-weight: 700; }
+
+  .seq { display: flex; flex-direction: column; gap: 8px; }
+  .step {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px;
+  }
+  .step .n {
+    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    background: #0d1016; font-size: 11px; font-weight: 700; color: var(--mute);
+  }
+  .step.on { border-color: var(--copper); }
+  .step.on .n { background: var(--copper); color: #1a1208; }
+  .step .who { color: var(--mute); font-size: 12px; }
+
+  .house { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .room-tile {
+    min-height: 110px; background: var(--raised); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; cursor: pointer; text-align: left; color: inherit;
+  }
+  .room-tile.on { background: var(--paper); color: var(--paper-ink); border-color: var(--paper); }
+  .room-tile .file { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--cyan); }
+  .room-tile.on .file { color: #7a4a18; }
+  .room-tile h3 { font-size: 15px; margin: 6px 0 4px; }
+  .room-tile p { margin: 0; font-size: 13px; color: var(--mute); }
+  .room-tile.on p { color: var(--paper-mute); }
+
+  .phases { display: grid; grid-template-columns: 1fr 18px 1fr 18px 1fr; align-items: stretch; gap: 0; }
+  .phase {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  }
+  .phase.on { border-color: var(--first); }
+  .phase.prefill.on { border-color: var(--cyan); }
+  .phase.decode.on { border-color: var(--copper); }
+  .arrow { display: grid; place-items: center; color: var(--mute); }
+  .lock { font-size: 12px; color: var(--bad); min-height: 18px; }
+
+  .bench-viz { display: grid; grid-template-columns: 1fr 168px; gap: 16px; align-items: end; }
+  .tabletop {
+    position: relative; height: 228px; background:
+      linear-gradient(#2a3144, #1c2230);
+    border: 1px solid var(--line); border-radius: 8px 8px 2px 2px;
+  }
+  .ruler {
+    position: absolute; inset: 12px 12px 12px auto; width: 18px;
+    background: repeating-linear-gradient(to top, var(--line) 0 1px, transparent 1px 22px);
+    border-left: 1px dashed var(--copper);
+  }
+  .ruler b {
+    position: absolute; right: 22px; font-size: 10px; color: var(--copper);
+    font-weight: 500; white-space: nowrap;
+  }
+  .cookbook, .notes {
+    position: absolute; bottom: 28px; width: 64px; border-radius: 3px 3px 0 0;
+    transition: height .2s ease;
+  }
+  .cookbook { left: 36px; background: var(--steel); }
+  .notes { left: 118px; background: var(--rose); }
+  .mat-lbl {
+    position: absolute; bottom: -22px; left: 0; font-size: 11px; color: var(--mute);
+    width: 64px; text-align: center;
+  }
+  .stats { font-variant-numeric: tabular-nums; font-size: 13px; }
+  .stats b { white-space: nowrap; }
+  .stats div { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .stats .big { font-size: 22px; font-weight: 800; margin: 8px 0; }
+  .fits { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(127,190,142,.15); color: var(--ok); }
+  .fits.no { background: rgba(224,106,79,.15); color: var(--bad); }
+
+  .hallway { margin-top: 14px; }
+  .hall-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+  .cargo {
+    height: 28px; background: var(--steel); border-radius: 4px; display: flex; overflow: hidden;
+    min-width: 28px; max-width: 58%; transition: width .2s; flex: 0 0 auto;
+  }
+  .cargo .k { background: var(--rose); height: 100%; }
+  .door {
+    width: 10px; height: 40px; border-left: 2px solid var(--first);
+    border-right: 2px solid var(--first); flex-shrink: 0;
+  }
+  .hall-cap { font-size: 12px; color: var(--mute); }
+
+  .gqa { display: flex; gap: 16px; align-items: center; }
+  .heads { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; flex: 1; }
+  .q { width: 100%; aspect-ratio: 1; border-radius: 50%; background: var(--cyan); opacity: .7; }
+  .kvheads { display: flex; gap: 8px; }
+  .kvh { width: 28px; height: 36px; background: var(--rose); border-radius: 3px; }
+
+  .tickets { display: flex; flex-direction: column; gap: 8px; }
+  .ticket {
+    display: grid; grid-template-columns: 70px 1fr 90px; gap: 8px; align-items: center;
+    background: var(--paper); color: var(--paper-ink); padding: 8px 10px; border-radius: 4px;
+    font-family: Newsreader, Georgia, serif;
+  }
+  .ticket .st { font-family: "Bricolage Grotesque", sans-serif; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .bar { height: 8px; background: #d9cba8; border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--copper); }
+
+  .metric-line { height: 64px; position: relative; margin: 18px 28px 8px; }
+  .metric-line .track { height: 4px; background: var(--line); position: absolute; left: 0; right: 0; top: 30px; }
+  .metric-line .seg { position: absolute; height: 4px; top: 30px; }
+  .metric-line .pre { background: var(--cyan); left: 0; width: 28%; }
+  .metric-line .dec { background: var(--copper); left: 28%; width: 72%; }
+  .pin { position: absolute; top: 0; transform: translateX(-50%); text-align: center; font-size: 11px; }
+  .pin b { display: block; color: var(--first); }
+
+  .labs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .lab-card {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+    min-height: 120px;
+  }
+  .lab-card .n { color: var(--copper); font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+  .lab-card h3 { font-size: 14px; margin: 6px 0; }
+  .lab-card p { margin: 0; font-size: 12px; color: var(--mute); }
+
+  .frontier { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .col h3 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+  .col ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .col li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .now li::before { content: "● "; color: var(--ok); }
+  .next li::before { content: "○ "; color: var(--copper); }
+
+  .switches { display: grid; gap: 8px; }
+  .sw {
+    display: grid; grid-template-columns: 220px 1fr auto; gap: 10px; align-items: center;
+    background: var(--raised); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px;
+  }
+  .sw code { color: var(--cyan); }
+  .sw .def { color: var(--mute); font-size: 12px; }
+
+  .gotcha {
+    background: var(--raised); border-left: 3px solid var(--bad); padding: 12px 14px; border-radius: 0 8px 8px 0;
+  }
+  .gotcha h3 { font-size: 15px; }
+  .gotcha p { margin: 4px 0 0; color: var(--mute); font-size: 14px; }
+
+  .quiz { display: grid; gap: 8px; }
+  .qbtn {
+    text-align: left; background: var(--raised); border: 1px solid var(--line);
+    color: var(--ink); border-radius: 10px; padding: 12px 14px; cursor: pointer;
+  }
+  .qbtn .a { display: none; margin-top: 8px; color: var(--mute); font-size: 14px; }
+  .qbtn.open .a { display: block; }
+  .qbtn.open { border-color: var(--cyan); }
+
+  .loop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .loop span {
+    background: var(--paper); color: var(--paper-ink); padding: 8px 12px; border-radius: 999px;
+    font-family: Newsreader, Georgia, serif; font-size: 14px;
+  }
+  .loop i { color: var(--mute); font-style: normal; }
+
+  @media (max-width: 980px) {
+    .rail { position: sticky; top: 0; inset: auto; width: auto; height: auto;
+      flex-direction: row; overflow-x: auto; padding: 10px 12px; gap: 4px; }
+    .rail .brand, .rail .aux { display: none; }
+    .rail a { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
+    main { margin-left: 0; }
+    section.room, .meal, .grid2, .house, .phases, .labs, .frontier, .bench-viz, .sw {
+      grid-template-columns: 1fr;
+    }
+    .phases { display: flex; flex-direction: column; gap: 8px; }
+    .arrow { transform: rotate(90deg); height: 18px; }
+    section.room { padding: 32px 18px 48px; scroll-margin-top: 52px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<nav class="rail" aria-label="Rooms">
+  <div class="brand">One stove<span>nanoserve, shown</span></div>
+  <a href="#idea" class="on">The restaurant</a>
+  <a href="#paths">Two kitchens</a>
+  <a href="#files">The house</a>
+  <a href="#rehearsal">Dress rehearsal</a>
+  <a href="#ticket">One ticket</a>
+  <a href="#cloche">The cloche</a>
+  <a href="#phases">Read, then write</a>
+  <a href="#memory">The workbench</a>
+  <a href="#metrics">The stopwatch</a>
+  <a href="#bench">Test kitchen</a>
+  <a href="#labs">Curriculum</a>
+  <a href="#frontier">Locked door</a>
+  <a href="#config">Switches</a>
+  <a href="#gotchas">Surprises</a>
+  <a href="#exit">Exit ticket</a>
+  <div class="aux">
+    Speeds here are illustrations.<br>
+    Measure with <code>bench.py</code>.<br>
+    <a href="index.html">Open the live request explorer</a>
+  </div>
+</nav>
+
+<main>
+<section class="room" id="idea">
+  <div class="copy">
+    <p class="eyebrow">Room 1 · the idea</p>
+    <h1>A restaurant with one stove.</h1>
+    <p class="lede">Inference makes the next token. Serving is the restaurant around that stove: take the ticket, load the cookbook, time the work, stream the bites, and eventually share one counter among many tables.</p>
+    <div class="paper">
+      <div class="kicker">The analogy to keep</div>
+      The stove is the model. The cookbook is the weights — heavy, shared, it does not grow. The scratchpad of notes is the KV cache — it grows with every word of the conversation. The hallway to the pantry is memory bandwidth. You cannot write word five until word four exists.
+    </div>
+  </div>
+  <div class="stage mill">
+    <header>
+      <h3>Watch one meal leave the kitchen</h3>
+      <span>client → server → engine → tokens</span>
+    </header>
+    <svg viewBox="0 0 640 260" width="100%" height="260" aria-hidden="true">
+      <path class="path" d="M70 130 H250 H400 H530"/>
+      <path id="heroPath" class="path live" d="M70 130 H530"/>
+      <rect class="box" x="20" y="104" width="90" height="52" rx="10"/>
+      <text class="lab" x="65" y="126" text-anchor="middle">client</text>
+      <text class="lab" x="65" y="142" text-anchor="middle">ticket</text>
+      <rect class="box" x="200" y="104" width="100" height="52" rx="10"/>
+      <text class="lab" x="250" y="126" text-anchor="middle">server.py</text>
+      <text class="lab" x="250" y="142" text-anchor="middle">host, not cook</text>
+      <rect class="box" x="360" y="88" width="120" height="84" rx="10"/>
+      <text class="lab" x="420" y="118" text-anchor="middle">engine</text>
+      <text class="lab" x="420" y="136" text-anchor="middle">the stove</text>
+      <rect class="box" x="520" y="104" width="100" height="52" rx="10"/>
+      <text class="lab" x="570" y="126" text-anchor="middle">stream</text>
+      <text class="lab" x="570" y="142" text-anchor="middle">one bite</text>
+      <circle id="heroDot" class="dot" r="6" cx="70" cy="130"/>
+    </svg>
+    <p style="color:var(--mute);font-size:13px;margin:0">The server never generates a token. The engine never speaks HTTP. That seam is the whole design.</p>
+  </div>
+</section>
+
+<section class="room" id="paths">
+  <div class="copy">
+    <p class="eyebrow">Room 2 · two paths</p>
+    <h2>Dining room and test kitchen share the stove.</h2>
+    <p>Both paths call the same engine and the same stopwatch. That is why a benchmark number is allowed to teach you about the server: nothing is hidden behind a different stack.</p>
+    <div class="paper">
+      <div class="kicker">Why two doors</div>
+      A diner cares about time-to-first-bite. A scientist cares about a grid of controlled meals. nanoserve keeps those as two front doors on one kitchen, not two products.
+    </div>
+  </div>
+  <div class="stage">
+    <header><h3>Same engine, two jobs</h3><span>serving path · experiment path</span></header>
+    <div class="grid2">
+      <div class="chip on" id="pathServe">
+        <b>Dining room</b>
+        <span>curl / chat app → server.py → engine → SSE bites</span>
+      </div>
+      <div class="chip" id="pathBench">
+        <b>Test kitchen</b>
+        <span>bench.py → engine → one JSON line per meal → plot.py</span>
+      </div>
+    </div>
+    <svg viewBox="0 0 640 180" width="100%" height="180" style="margin-top:12px" aria-hidden="true">
+      <text class="lab" x="40" y="36">client / curl</text>
+      <text class="lab" x="40" y="150">bench.py</text>
+      <path class="path" d="M130 30 H300"/>
+      <path class="path" d="M130 144 H300"/>
+      <rect class="box" x="300" y="10" width="110" height="40" rx="8"/>
+      <text class="lab" x="355" y="34" text-anchor="middle">server.py</text>
+      <rect class="box" x="300" y="124" width="110" height="40" rx="8"/>
+      <text class="lab" x="355" y="148" text-anchor="middle">JSONL row</text>
+      <path class="path live" d="M410 30 C480 30 480 86 520 86"/>
+      <path class="path live" d="M410 144 C480 144 480 86 520 86"/>
+      <rect class="box" x="520" y="62" width="110" height="48" rx="8"/>
+      <text class="lab" x="575" y="82" text-anchor="middle">engine.py</text>
+      <text class="lab" x="575" y="98" text-anchor="middle">the stove</text>
+    </svg>
+  </div>
+</section>
+
+<section class="room" id="files">
+  <div class="copy">
+    <p class="eyebrow">Room 3 · a house with six rooms</p>
+    <h2>Each file is one job. Click a room.</h2>
+    <p>Read them in this order: memory, engine, bench, server, then config and plot. Every file is short enough for one sitting. The implementation is the textbook.</p>
+    <div class="paper" id="fileExplain">
+      <div class="kicker">Start here</div>
+      <em>memory.py</em> is the pantry scale. It tells you whether the cookbook and the notes will fit on a 48&nbsp;GiB counter <em>before</em> you download anything.
+    </div>
+  </div>
+  <div class="house" id="house">
+    <button class="room-tile on" data-file="memory">
+      <div class="file">memory.py</div>
+      <h3>Pantry scale</h3>
+      <p>Weigh the cookbook and the notes.</p>
+    </button>
+    <button class="room-tile" data-file="engine">
+      <div class="file">engine.py</div>
+      <h3>The stove</h3>
+      <p>Prefill, decode, streaming, timing.</p>
+    </button>
+    <button class="room-tile" data-file="bench">
+      <div class="file">bench.py</div>
+      <h3>Test kitchen</h3>
+      <p>One loaded stove, a grid of meals.</p>
+    </button>
+    <button class="room-tile" data-file="server">
+      <div class="file">server.py</div>
+      <h3>Dining room</h3>
+      <p>HTTP in, SSE bites out.</p>
+    </button>
+    <button class="room-tile" data-file="config">
+      <div class="file">config.py</div>
+      <h3>Light switches</h3>
+      <p>NANOSERVE_* environment only.</p>
+    </button>
+    <button class="room-tile" data-file="plot">
+      <div class="file">plot.py</div>
+      <h3>Photographs</h3>
+      <p>JSONL lines become curves.</p>
+    </button>
+  </div>
+</section>
+
+<section class="room" id="rehearsal">
+  <div class="copy">
+    <p class="eyebrow">Room 4 · first 15 minutes</p>
+    <h2>Rehearse with empty plates.</h2>
+    <p>The mock engine emits canned words with a fake delay. The numbers are plastic fruit. The waiters, tickets, clocks, and plots are real. Prove the restaurant works before you buy a cookbook.</p>
+    <pre class="cmd">python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+python -m pytest -q
+
+python -m nanoserve.bench --engine mock \
+  --prompt-tokens 16 128 512 --max-tokens 32 \
+  --out results/mock.jsonl
+python -m nanoserve.plot results/mock.jsonl --out results
+
+NANOSERVE_ENGINE=mock python -m nanoserve.server</pre>
+  </div>
+  <div class="stage">
+    <header>
+      <h3>Plastic fruit still trains the waiters</h3>
+      <button class="btn" id="mockPlay">Send a mock ticket</button>
+    </header>
+    <div class="words" id="mockWords" style="display:flex;flex-wrap:wrap;gap:6px;min-height:88px"></div>
+    <p style="color:var(--mute);font-size:13px">Then, in another terminal:</p>
+    <pre class="cmd">curl -N localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"Explain prefill simply."}],"max_tokens":16,"temperature":0,"stream":true}'
+
+curl localhost:8000/health
+curl localhost:8000/metrics</pre>
+    <p style="color:var(--mute);font-size:13px;margin:0"><code>-N</code> means “do not buffer.” You should see several <code>data:</code> events, then <code>data: [DONE]</code>.</p>
+  </div>
+</section>
+
+<section class="room" id="ticket">
+  <div class="copy">
+    <p class="eyebrow">Room 5 · one streaming request</p>
+    <h2>Follow one ticket through the kitchen.</h2>
+    <p>The host checks the ticket. The stove does the cooking. The base engine owns the clock. Subclasses only produce pieces of text.</p>
+    <div class="paper">
+      <div class="kicker">The narrow seam</div>
+      <em>BaseEngine.stream_stats()</em> is the pass-through window. Mock and MLX both push text chunks. Only the base class starts the stopwatch, marks time-to-first-bite, and writes the final check.
+    </div>
+  </div>
+  <div class="stage">
+    <header>
+      <h3>Play the ticket</h3>
+      <button class="btn" id="ticketPlay">Run request</button>
+    </header>
+    <div class="seq" id="seq"></div>
+  </div>
+</section>
+
+<section class="room" id="cloche">
+  <div class="copy">
+    <p class="eyebrow">Room 6 · streaming</p>
+    <h2>Same kitchen. Two dining rooms.</h2>
+    <p>The stove does almost the same work either way. Streaming changes when the diner is allowed to eat. Time-to-first-bite is a serving idea, not a model idea.</p>
+    <div class="paper">
+      <div class="kicker">Cloche versus courses</div>
+      Non-streaming is a silver cloche: the whole meal is cooked, then revealed. Streaming is sending each bite as it leaves the pan. The cooking time matches. The hunger time does not.
+    </div>
+  </div>
+  <div class="stage">
+    <header>
+      <h3>Race the two rooms</h3>
+      <button class="btn" id="racePlay">Cook the same meal twice</button>
+    </header>
+    <div class="meal">
+      <div>
+        <div style="font-size:13px;color:var(--mute);margin-bottom:6px">Whole meal under a cloche</div>
+        <div class="plate">
+          <div class="cloche" id="clocheLid">waiting for the last token</div>
+          <div class="words" id="waitWords"></div>
+          <div class="clock" id="waitClock">0.00 s · diner sees nothing</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--mute);margin-bottom:6px">Courses as they finish</div>
+        <div class="plate">
+          <div class="words" id="streamWords"></div>
+          <div class="clock" id="streamClock">0.00 s · waiting on first bite</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="room full" id="phases">
+  <div class="copy">
+    <p class="eyebrow">Room 7 · load, prefill, decode</p>
+    <h2>Read the whole order. Then write one word at a time.</h2>
+    <p class="lede">Load the cookbook once. Prefill is a parallel glance at the ticket. Decode is sequential: each new word needs the last one.</p>
+  </div>
+  <div class="stage">
+    <header>
+      <h3>Three machines, one meal</h3>
+      <button class="btn" id="phasePlay">Run the lifecycle</button>
+    </header>
+    <div class="phases">
+      <div class="phase" id="phLoad">
+        <div class="eyebrow">Load</div>
+        <p>Put the cookbook on the counter. Expensive. Done once per process — not once per ticket.</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="phase" id="phPrefill">
+        <div class="eyebrow" style="color:var(--cyan)">Prefill</div>
+        <p>Process every prompt token together. Build the first stack of notes. Often compute-bound.</p>
+        <div class="words" id="prefillToks" style="margin-top:8px"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="phase" id="phDecode">
+        <div class="eyebrow" style="color:var(--copper)">Decode</div>
+        <p>One forward pass. Append one note. Repeat. Word <em>n+1</em> is locked until word <em>n</em> exists.</p>
+        <div class="lock" id="decodeLock"></div>
+        <div class="words" id="decodeToks"></div>
+      </div>
+    </div>
+    <p style="color:var(--mute);font-size:13px;margin:14px 0 0">
+      <code>TTFT = start → first emitted token</code> &nbsp;·&nbsp;
+      <code>prefill_tps ≈ prompt_tokens / TTFT</code> &nbsp;·&nbsp;
+      <code>decode_tps = (output_tokens − 1) / (total − TTFT)</code>
+    </p>
+    <p style="color:var(--mute);font-size:13px;margin:6px 0 0">The first generated token sits inside TTFT, so decode speed counts only the later ones. <code>prefill_tps</code> is a useful approximation, not a kernel timer: TTFT also includes tokenize, Python, and that first decode step.</p>
+  </div>
+</section>
+
+<section class="room" id="memory">
+  <div class="copy">
+    <p class="eyebrow">Room 8 · the workbench</p>
+    <h2>One counter. A book that stays. Notes that grow.</h2>
+    <p>On Apple Silicon the CPU and GPU share one pile of RAM. Weights are the cookbook: <code>params × bits / 8</code>. The KV cache is the scratchpad: it grows with every token and every open ticket.</p>
+    <div class="paper">
+      <div class="kicker">Why decode feels like a hallway</div>
+      Every decode step carries the <em>entire cookbook</em> plus <em>every note so far</em> through a finite door (~400&nbsp;GB/s). A thinner book (quantization) or fewer notes (shorter context) makes each trip faster. That is why 4-bit is often quicker at decode, not only smaller.
+    </div>
+    <p style="margin-top:1em;color:var(--mute)">Qwen3-14B uses grouped-query attention: 40 query heads share 8 KV notebooks. That is why its notes are 160&nbsp;KiB per token, not 800.</p>
+  </div>
+  <div class="stage">
+    <header><h3>Same math as memory.py</h3><span>48 GiB unified memory</span></header>
+    <label class="ctrl">Context tokens <b id="vCtx"></b></label>
+    <input type="range" id="ctx" min="256" max="40960" step="256" value="2048">
+    <label class="ctrl">Open tickets (batch) <b id="vBatch"></b></label>
+    <input type="range" id="batch" min="1" max="8" step="1" value="1">
+    <label class="ctrl">Cookbook print (bits)</label>
+    <div class="bits" id="bits">
+      <button data-b="16">BF16</button>
+      <button data-b="8">8-bit</button>
+      <button data-b="4" class="on">4-bit</button>
+      <button data-b="2">2-bit</button>
+    </div>
+    <div class="bench-viz" style="margin-top:16px">
+      <div class="tabletop" id="tabletop">
+        <div class="cookbook" id="book"><span class="mat-lbl">weights</span></div>
+        <div class="notes" id="notes"><span class="mat-lbl">KV notes</span></div>
+        <div class="ruler">
+          <b style="bottom:0">0</b>
+          <b style="bottom:48%">24 GiB</b>
+          <b style="top:0">48 GiB</b>
+        </div>
+      </div>
+      <div class="stats">
+        <div><span>weights</span><b id="rW"></b></div>
+        <div><span>KV / token</span><b>160 KiB</b></div>
+        <div><span>KV now</span><b id="rK"></b></div>
+        <div><span>per decode</span><b id="rRead"></b></div>
+        <div class="big" id="rTps"></div>
+        <span class="fits" id="fits">fits</span>
+      </div>
+    </div>
+    <div class="hallway">
+      <div class="hall-row">
+        <div class="cargo" id="cargo"><div class="k" id="cargoK"></div></div>
+        <div class="door" title="memory bandwidth"></div>
+        <div class="hall-cap">door 400 GB/s · this cargo walks the hallway every token</div>
+      </div>
+    </div>
+    <div class="gqa" style="margin-top:16px">
+      <div>
+        <div style="font-size:12px;color:var(--mute);margin-bottom:6px">40 query heads</div>
+        <div class="heads" id="qheads"></div>
+      </div>
+      <div style="color:var(--mute)">share</div>
+      <div>
+        <div style="font-size:12px;color:var(--mute);margin-bottom:6px">8 KV notebooks</div>
+        <div class="kvheads" id="kvheads"></div>
+      </div>
+    </div>
+    <pre class="cmd" style="margin-top:16px;margin-bottom:0">python -m nanoserve.memory \
+  --params 14.8 --bits 4 --layers 40 --kv-heads 8 --head-dim 128 \
+  --seq-lens 2048 8192 32768 40960</pre>
+  </div>
+</section>
+
+<section class="room" id="metrics">
+  <div class="copy">
+    <p class="eyebrow">Room 9 · the stopwatch</p>
+    <h2>Name the intervals before you graph them.</h2>
+    <p>A chart without a definition is decoration. These fields are what nanoserve actually writes down.</p>
+    <div class="paper">
+      <div class="kicker">Two hungers</div>
+      <em>TTFT</em> is how long until the first bite. <em>Decode TPS</em> is how fast bites keep arriving. <em>total_s</em> is the whole sitting. A diner feels TTFT first. A throughput graph brags about decode.
+    </div>
+  </div>
+  <div class="stage">
+    <header><h3>One request, labeled</h3><span>start · first token · last token</span></header>
+    <div class="metric-line">
+      <div class="track"></div>
+      <div class="seg pre"></div>
+      <div class="seg dec"></div>
+      <div class="pin" style="left:0"><b>start</b>ticket in</div>
+      <div class="pin" style="left:28%"><b>TTFT</b>first bite</div>
+      <div class="pin" style="left:100%"><b>last</b>check arrives</div>
+    </div>
+    <div class="grid2" style="margin-top:28px">
+      <div class="chip"><b>prompt_tokens</b><span>How much order-reading actually happened.</span></div>
+      <div class="chip"><b>output_tokens</b><span>How much sequential writing happened.</span></div>
+      <div class="chip"><b>ttft_s</b><span>Start to first emitted piece.</span></div>
+      <div class="chip"><b>prefill_tps</b><span>Prompt tokens / TTFT. Approximate.</span></div>
+      <div class="chip"><b>decode_tps</b><span>Later pieces per second after TTFT.</span></div>
+      <div class="chip"><b>wall_s</b><span>Wrapper around the call. Is overhead material?</span></div>
+    </div>
+    <p style="color:var(--mute);font-size:13px;margin:14px 0 0">Model load is outside the sweep timer. The first real request can still include kernel compile. Three repeats show jitter; they are not a p95. Direct bench excludes HTTP, SSE, and the queue you have not built yet.</p>
+  </div>
+</section>
+
+<section class="room" id="bench">
+  <div class="copy">
+    <p class="eyebrow">Room 10 · experiments</p>
+    <h2>Load the stove once. Time many meals.</h2>
+    <p>That is the shape of a real server: expensive weights stay resident, tickets come and go. Do not begin with a giant matrix. Ask one question. Predict the curve. Change one variable.</p>
+    <div class="paper">
+      <div class="kicker">Write this before you run</div>
+      Question. Prediction. Controlled variables. Result. Mechanism in the code. What I would change in a real server.
+    </div>
+  </div>
+  <div class="stage">
+    <header>
+      <h3>A grid is just many tickets</h3>
+      <button class="btn" id="gridPlay">Run a tiny sweep</button>
+    </header>
+    <div class="loop">
+      <span>ask</span><i>→</i><span>predict</span><i>→</i><span>pilot</span><i>→</i>
+      <span>change one thing</span><i>→</i><span>explain from the code</span>
+    </div>
+    <div class="house" id="grid" style="margin-top:16px"></div>
+    <pre class="cmd" style="margin-top:16px">python -m nanoserve.bench \
+  --engine mlx --model weights/mlx-community__Qwen3-14B-4bit \
+  --prompt-tokens 128 --max-tokens 64 --temperature 0 \
+  --label qwen3-14b-q4-smoke --out results/qwen3-14b-q4-smoke.jsonl</pre>
+    <p style="color:var(--mute);font-size:13px;margin:8px 0 0">Keep Qwen3 thinking off for performance work. Reasoning tokens make length a moving target. Give every experiment its own JSONL filename — <code>--out</code> overwrites.</p>
+  </div>
+</section>
+
+<section class="room full" id="labs">
+  <div class="copy">
+    <p class="eyebrow">Room 11 · curriculum</p>
+    <h2>Seven kitchens of increasing chaos.</h2>
+    <p class="lede">Each lab is one question. The last two are not implemented yet — that is the point.</p>
+  </div>
+  <div class="labs">
+    <div class="lab-card"><div class="n">LAB 0</div><h3>Mock pipeline</h3><p>Can every waiter talk to the stove with plastic fruit?</p></div>
+    <div class="lab-card"><div class="n">LAB 1</div><h3>Context length</h3><p>Why does TTFT rise when the order gets longer? Prefill reads more. Notes pile up. Decode may slow as the hallway cargo grows.</p></div>
+    <div class="lab-card"><div class="n">LAB 2</div><h3>Output length</h3><p>Why is decode sequential? Hold the prompt still. Change the writing budget. Check <code>output_tokens</code> — EOS can leave early.</p></div>
+    <div class="lab-card"><div class="n">LAB 3</div><h3>Memory</h3><p>Predict with the scale, then measure process memory. The gap is the lesson: buffers, allocator caches, the formula’s omissions.</p></div>
+    <div class="lab-card"><div class="n">LAB 4</div><h3>HTTP + stream</h3><p>Same prompt three ways: direct engine, HTTP cloche, HTTP courses. Server TTFT vs client TTFT is serving overhead.</p></div>
+    <div class="lab-card"><div class="n">LAB 5</div><h3>Concurrency</h3><p>Four tickets, one stove. First make the line explicit. Watch head-of-line blocking. Then add one mechanism and rerun.</p></div>
+    <div class="lab-card"><div class="n">LAB 6</div><h3>Quantization</h3><p>Thinner cookbooks. Hold family, prompt, limit, temperature, and warm-up still. Quality needs a fixed eval set, not one summary prompt.</p></div>
+    <div class="lab-card"><div class="n">LAB 7</div><h3>Another stove</h3><p>Put llama.cpp behind the same engine interface. Remaining difference is implementation, not the model.</p></div>
+  </div>
+  <div class="stage" style="margin-top:8px">
+    <header>
+      <h3>Lab 5 preview — one stove, four tickets</h3>
+      <button class="btn" id="queuePlay">Open the ticket wheel</button>
+    </header>
+    <div class="tickets" id="tickets"></div>
+    <p style="color:var(--mute);font-size:13px;margin:12px 0 0">Today’s server stores one engine and only the last request’s stats. It has no queue, no continuous batching, no per-request history. Serialization with a visible wait is the highest-value next exercise — not a dashboard.</p>
+  </div>
+</section>
+
+<section class="room" id="frontier">
+  <div class="copy">
+    <p class="eyebrow">Room 12 · the locked door</p>
+    <h2>A server that returns tokens is the core. It is not the whole subject.</h2>
+    <p>Serving engineering also means scheduling, overload, tail latency, memory pressure, observability, and reliability. Keep the boundary honest so a mock curve never masquerades as a leaderboard.</p>
+  </div>
+  <div class="frontier">
+    <div class="col now">
+      <h3>Implemented now</h3>
+      <ul>
+        <li>Mock + MLX engines</li>
+        <li>OpenAI-style chat + SSE</li>
+        <li>Single-request timing</li>
+        <li>Memory estimator</li>
+        <li>JSONL sweeps + basic plots</li>
+      </ul>
+    </div>
+    <div class="col next">
+      <h3>Learning exercises, not claims</h3>
+      <ul>
+        <li>Warm-up-aware aggregation</li>
+        <li>Measured MLX memory</li>
+        <li>Client load generator</li>
+        <li>Queue and per-request metrics</li>
+        <li>Batching or prefix caching</li>
+        <li>Quality evaluation</li>
+        <li>llama.cpp backend</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="room" id="config">
+  <div class="copy">
+    <p class="eyebrow">Room 13 · configuration</p>
+    <h2>No config files. Labeled switches on the wall.</h2>
+    <p>All server settings are <code>NANOSERVE_*</code> environment variables. Requests may override <code>max_tokens</code> and <code>temperature</code>. The <code>model</code> field is accepted for API compatibility; the loaded engine owns the actual cookbook.</p>
+    <pre class="cmd">NANOSERVE_ENGINE=mlx \
+NANOSERVE_MODEL=weights/mlx-community__Qwen3-14B-4bit \
+python -m nanoserve.server</pre>
+  </div>
+  <div class="switches">
+    <div class="sw"><code>NANOSERVE_ENGINE</code><span>mock, mlx, or auto-detect</span><span class="def">auto</span></div>
+    <div class="sw"><code>NANOSERVE_MODEL</code><span>repo or local path</span><span class="def">local Q4 if present</span></div>
+    <div class="sw"><code>NANOSERVE_HOST</code><span>bind address</span><span class="def">127.0.0.1</span></div>
+    <div class="sw"><code>NANOSERVE_PORT</code><span>HTTP port</span><span class="def">8000</span></div>
+    <div class="sw"><code>NANOSERVE_MAX_TOKENS</code><span>default writing budget</span><span class="def">256</span></div>
+    <div class="sw"><code>NANOSERVE_TEMPERATURE</code><span>default sampling</span><span class="def">0.7</span></div>
+    <div class="sw"><code>NANOSERVE_THINKING</code><span>Qwen3 reasoning output</span><span class="def">false</span></div>
+  </div>
+</section>
+
+<section class="room full" id="gotchas">
+  <div class="copy">
+    <p class="eyebrow">Room 14 · common surprises</p>
+    <h2>The kitchen will lie to you politely.</h2>
+  </div>
+  <div class="grid2">
+    <div class="gotcha">
+      <h3>The first real ticket is slow</h3>
+      <p>The cookbook may already sit on the counter. Kernels and allocator caches still warm up. Separate cold-start, first-request, and steady-state.</p>
+    </div>
+    <div class="gotcha">
+      <h3>You asked for 1024 tokens and got 1,183</h3>
+      <p><code>bench.py</code> builds roughly that many words. The tokenizer decides. Analyze <code>prompt_tokens</code>, not only the target.</p>
+    </div>
+    <div class="gotcha">
+      <h3>Fewer bites than max_tokens</h3>
+      <p>The stove said EOS. The budget is a ceiling, not a promise. Use measured output count when comparing work.</p>
+    </div>
+    <div class="gotcha">
+      <h3>The formula fits; macOS is sweating</h3>
+      <p>The scale omits runtime overhead on purpose. Leave headroom. Shrink context or print a thinner book.</p>
+    </div>
+    <div class="gotcha">
+      <h3>auto chose the mock engine</h3>
+      <p>MLX-LM is not importable. On Apple Silicon: <code>pip install -e ".[mac,viz,dev]"</code></p>
+    </div>
+    <div class="gotcha">
+      <h3>The charts look official and came from plastic fruit</h3>
+      <p>Put engine and model in the filename. Mock data validates plumbing. It does not describe this machine.</p>
+    </div>
+  </div>
+</section>
+
+<section class="room" id="exit">
+  <div class="copy">
+    <p class="eyebrow">Room 15 · you can leave when</p>
+    <h2>If you can explain these, you are learning serving.</h2>
+    <p>Running a local model is the stove. Serving is why four tickets need a line, why context moves TTFT, and why notes consume the counter.</p>
+    <p><a href="../GETTING_STARTED.md">Prose companion</a> · <a href="index.html">Live request explorer</a> · <a href="../experiments.md">Experiment backlog</a></p>
+  </div>
+  <div class="quiz" id="quiz">
+    <button class="qbtn"><b>Trace one ticket.</b> Who validates, who cooks, who owns the clock?<div class="a">Client sends OpenAI-style JSON. server.py validates and forwards. Engine subclasses emit text. BaseEngine.stream_stats() records TTFT and final Stats. SSE carries bites; [DONE] closes the meal.</div></button>
+    <button class="qbtn"><b>Why does a longer order raise TTFT?</b><div class="a">Prefill must read every prompt token before the first bite. More tokens, more parallel work, later first bite. KV notes also appear all at once at that moment.</div></button>
+    <button class="qbtn"><b>Why can decode slow as context grows?</b><div class="a">Each step rereads weights plus every note. Notes grow with sequence length. The hallway is fixed. Cargo / door = seconds per token.</div></button>
+    <button class="qbtn"><b>Why does 4-bit often decode faster?</b><div class="a">A thinner cookbook is fewer bytes through the same door every sequential step. Fit is the obvious win; bandwidth is the speed win.</div></button>
+    <button class="qbtn"><b>Why do concurrent tickets require scheduling?</b><div class="a">One stove. Without a queue you get accidental blocking. With a FIFO you get honest head-of-line wait. Batching and prefix-cache are later mechanisms — measure the line first.</div></button>
+  </div>
+</section>
+</main>
+
+<script>
+const GIB = 1024 ** 3;
+const LAYERS = 40, KV_HEADS = 8, HEAD_DIM = 128, PARAMS = 14.8, BW = 400e9;
+const weightsBytes = (bits) => Math.round(PARAMS * 1e9 * bits / 8);
+const kvPerToken = 2 * LAYERS * KV_HEADS * HEAD_DIM * 2;
+const fmtGiB = b => (b / GIB).toFixed(2) + " GiB";
+const $ = id => document.getElementById(id);
+
+/* rail */
+const links = [...document.querySelectorAll(".rail a[href^='#']")];
+const rooms = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id));
+  });
+}, { rootMargin: "-40% 0px -50% 0px" });
+rooms.forEach(r => io.observe(r));
+
+/* hero dot */
+(function hero() {
+  const path = $("heroPath"), dot = $("heroDot");
+  if (!path || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const len = path.getTotalLength();
+  let t = 0;
+  function frame() {
+    t = (t + 0.004) % 1;
+    const p = path.getPointAtLength(t * len);
+    dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+/* files */
+const FILE = {
+  memory: ["Pantry scale", "memory.py weighs two things: the cookbook (weights) and the notes (KV cache). Run it before a download. The discrepancy with Activity Monitor is a later lab, not a bug in the scale."],
+  engine: ["The stove", "engine.py is where prefill, decode, streaming, and measurement meet. MockEngine is plastic fruit. MLXEngine is Apple Silicon. BaseEngine owns the stopwatch so both stoves are comparable."],
+  bench: ["Test kitchen", "bench.py loads the stove once, then walks a grid of prompt sizes × output limits × repeats. Each meal becomes one flat JSON object. That is the steady-state shape of a server."],
+  server: ["Dining room", "server.py is a thin FastAPI host. It does not know how a token is born. It forwards deltas as SSE and snapshots /metrics from the last meal."],
+  config: ["Light switches", "No YAML. Settings come from NANOSERVE_* through config.py. Auto picks MLX when importable, and the local 4-bit Qwen3 when the download exists."],
+  plot: ["Photographs", "plot.py turns JSONL into TTFT and decode charts. Keep Q4, Q8, and BF16 in separate files so a mock curve cannot sit on a real axis by accident."]
+};
+document.getElementById("house").addEventListener("click", e => {
+  const tile = e.target.closest(".room-tile"); if (!tile) return;
+  document.querySelectorAll(".room-tile").forEach(t => t.classList.toggle("on", t === tile));
+  const [title, body] = FILE[tile.dataset.file];
+  $("fileExplain").innerHTML = `<div class="kicker">${title}</div>${body}`;
+});
+
+/* mock words */
+const MOCK = ["the","stove","emits","canned","words","with","fake","delay","so","the","waiters","can","rehearse"];
+$("mockPlay").onclick = () => {
+  const el = $("mockWords"); el.innerHTML = "";
+  MOCK.forEach((w, i) => setTimeout(() => {
+    const s = document.createElement("span"); s.className = "tok g"; s.textContent = w; el.appendChild(s);
+  }, 180 * i));
+};
+
+/* ticket sequence */
+const STEPS = [
+  ["Client", "hands over an OpenAI-style ticket, stream=true"],
+  ["server.py", "validates. Does not cook."],
+  ["BaseEngine", "starts the clock, asks the stove to stream"],
+  ["Stove", "prefill: reads the whole order, first notes appear"],
+  ["TTFT", "first bite leaves the pass — the amber moment"],
+  ["Decode loop", "one word, one note, one hallway trip, repeat"],
+  ["Check", "empty delta + Stats. /metrics snapshot. [DONE]"]
+];
+function renderSeq(active) {
+  $("seq").innerHTML = STEPS.map((s, i) =>
+    `<div class="step ${i === active ? "on" : ""}"><div class="n">${i+1}</div><div>${s[1]}</div><div class="who">${s[0]}</div></div>`
+  ).join("");
+}
+renderSeq(-1);
+$("ticketPlay").onclick = () => {
+  let i = 0; renderSeq(0);
+  const t = setInterval(() => { i++; if (i >= STEPS.length) { clearInterval(t); return; } renderSeq(i); }, 700);
+};
+
+/* cloche race */
+const GEN = ["Read","the","whole","order","at","once,","then","write","one","word."];
+function race() {
+  const wait = $("waitWords"), stream = $("streamWords");
+  wait.innerHTML = stream.innerHTML = "";
+  $("clocheLid").classList.remove("off");
+  const PRE = 900, STEP = 160;
+  const start = performance.now();
+  function clock(id, text) {
+    $(id).innerHTML = ((performance.now() - start) / 1000).toFixed(2) + " s · " + text;
+  }
+  clock("waitClock", "diner sees nothing");
+  clock("streamClock", "still reading the order");
+  const iv = setInterval(() => {
+    const t = performance.now() - start;
+    if (t < PRE) {
+      clock("waitClock", "cloche still down");
+      clock("streamClock", "prefill · waiting on first bite");
+    } else {
+      const n = Math.min(GEN.length, Math.floor((t - PRE) / STEP) + 1);
+      stream.innerHTML = GEN.slice(0, n).map(w => `<span class="tok g">${w}</span>`).join("");
+      const first = n >= 1;
+      clock("streamClock", first
+        ? (n === 1 ? "<span class='mark'>first bite</span> · courses continue" : n + " bites on the plate")
+        : "waiting");
+      clock("waitClock", "still under the cloche");
+      if (n >= GEN.length) {
+        clearInterval(iv);
+        wait.innerHTML = GEN.map(w => `<span class="tok g">${w}</span>`).join("");
+        $("clocheLid").classList.add("off");
+        clock("waitClock", "cloche lifts — whole meal at once");
+        clock("streamClock", "<span class='mark'>same kitchen time</span> · diner was already eating");
+      }
+    }
+  }, 50);
+}
+$("racePlay").onclick = race;
+
+/* phases */
+const PROMPT = ["Explain", "prefill", "simply."];
+const REPLY = ["Read", "everything", "first.", "Then", "one", "word."];
+function toks(el, words, cls, n) {
+  el.innerHTML = words.map((w, i) =>
+    `<span class="tok ${cls} ${i < n ? "" : "ghost"}">${w}</span>`).join("");
+}
+$("phasePlay").onclick = () => {
+  const L = $("phLoad"), P = $("phPrefill"), D = $("phDecode");
+  [L, P, D].forEach(x => x.classList.remove("on"));
+  toks($("prefillToks"), PROMPT, "p", 0);
+  toks($("decodeToks"), REPLY, "g", 0);
+  $("decodeLock").textContent = "";
+  L.classList.add("on");
+  setTimeout(() => {
+    L.classList.remove("on"); P.classList.add("on");
+    toks($("prefillToks"), PROMPT, "p", PROMPT.length);
+  }, 700);
+  setTimeout(() => {
+    P.classList.remove("on"); D.classList.add("on");
+    let i = 0;
+    function step() {
+      if (i >= REPLY.length) { $("decodeLock").textContent = "EOS or max_tokens — stop."; return; }
+      $("decodeLock").textContent = i === 0
+        ? "First generated token is part of TTFT."
+        : `Locked until “${REPLY[i-1]}” exists.`;
+      i++; toks($("decodeToks"), REPLY, "g", i);
+      setTimeout(step, 420);
+    }
+    step();
+  }, 1500);
+};
+
+/* memory workbench */
+let BITS = 4;
+function paintHeads() {
+  $("qheads").innerHTML = Array.from({length: 40}, () => '<div class="q"></div>').join("");
+  $("kvheads").innerHTML = Array.from({length: 8}, () => '<div class="kvh"></div>').join("");
+}
+paintHeads();
+function updateMem() {
+  const ctx = +$("ctx").value, batch = +$("batch").value;
+  $("vCtx").textContent = ctx.toLocaleString();
+  $("vBatch").textContent = batch + (batch === 1 ? " ticket" : " tickets");
+  const w = weightsBytes(BITS);
+  const kv = kvPerToken * ctx * batch;
+  const total = w + kv + GIB;
+  const wGiB = w / GIB, kGiB = kv / GIB, tGiB = total / GIB;
+  const maxH = 180;
+  $("book").style.height = Math.max(8, (wGiB / 48) * maxH) + "px";
+  $("notes").style.height = Math.max(4, (kGiB / 48) * maxH) + "px";
+  $("rW").textContent = fmtGiB(w);
+  $("rK").textContent = fmtGiB(kv);
+  $("rRead").textContent = fmtGiB(w + kv);
+  const tps = BW / (w + kv);
+  $("rTps").textContent = Math.round(tps).toLocaleString() + " tok/s est.";
+  const fits = tGiB <= 48;
+  $("fits").textContent = fits ? "fits 48 GiB (formula)" : "over 48 GiB (formula)";
+  $("fits").classList.toggle("no", !fits);
+  const share = kv / (w + kv);
+  $("cargoK").style.width = (share * 100) + "%";
+  $("cargo").style.width = Math.min(100, 20 + tGiB * 1.6) + "%";
+}
+$("ctx").oninput = $("batch").oninput = updateMem;
+$("bits").onclick = e => {
+  if (!e.target.dataset.b) return;
+  BITS = +e.target.dataset.b;
+  [...$("bits").children].forEach(b => b.classList.toggle("on", b === e.target));
+  updateMem();
+};
+updateMem();
+
+/* bench grid */
+const CELLS = [16, 128, 512].flatMap(p => [32, 128].map(m => ({p, m})));
+function drawGrid(lit) {
+  $("grid").innerHTML = CELLS.map((c, i) =>
+    `<div class="room-tile ${i <= lit ? "on" : ""}"><div class="file">${c.p} prompt</div><h3>${c.m} out</h3><p>${i <= lit ? "one JSON line written" : "waiting"}</p></div>`
+  ).join("");
+}
+drawGrid(-1);
+$("gridPlay").onclick = () => {
+  let i = -1;
+  const t = setInterval(() => { i++; drawGrid(i); if (i >= CELLS.length - 1) clearInterval(t); }, 280);
+};
+
+/* queue */
+const Q = [
+  {name: "Table A", work: 1},
+  {name: "Table B", work: .6},
+  {name: "Table C", work: 1.2},
+  {name: "Table D", work: .4}
+];
+function drawQ(states) {
+  $("tickets").innerHTML = Q.map((q, i) => {
+    const st = states[i] || "in line";
+    const w = st === "eating" ? 100 : st === "cooking" ? 50 : 0;
+    return `<div class="ticket"><div class="st">${st}</div><div>${q.name} · one stove</div><div class="bar"><i style="width:${w}%"></i></div></div>`;
+  }).join("");
+}
+drawQ(Q.map(() => "in line"));
+$("queuePlay").onclick = () => {
+  const states = Q.map(() => "in line");
+  drawQ(states);
+  let i = 0;
+  function cook() {
+    if (i >= Q.length) return;
+    states[i] = "cooking"; drawQ(states);
+    setTimeout(() => {
+      states[i] = "eating"; i++; drawQ(states); cook();
+    }, 700 + Q[Math.max(0, i)].work * 400);
+  }
+  cook();
+};
+
+/* quiz */
+$("quiz").onclick = e => {
+  const b = e.target.closest(".qbtn"); if (b) b.classList.toggle("open");
+};
+</script>
+</body>
+</html>
